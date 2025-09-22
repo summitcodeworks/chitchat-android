@@ -1,0 +1,89 @@
+package com.summitcodeworks.chitchat.presentation.viewmodel
+
+import android.net.Uri
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.summitcodeworks.chitchat.domain.usecase.user.GetUserProfileUseCase
+import com.summitcodeworks.chitchat.domain.usecase.user.UpdateUserProfileUseCase
+import com.summitcodeworks.chitchat.presentation.state.ProfileState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class ProfileSetupViewModel @Inject constructor(
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val updateUserProfileUseCase: UpdateUserProfileUseCase
+) : ViewModel() {
+
+    private val _profileState = MutableStateFlow(ProfileState())
+    val profileState: StateFlow<ProfileState> = _profileState.asStateFlow()
+
+    init {
+        loadExistingProfile()
+    }
+
+    private fun loadExistingProfile() {
+        viewModelScope.launch {
+            _profileState.value = _profileState.value.copy(isLoading = true, error = null)
+
+            getUserProfileUseCase()
+                .fold(
+                    onSuccess = { user ->
+                        val isProfileComplete = user.name.isNotBlank()
+                        _profileState.value = _profileState.value.copy(
+                            isLoading = false,
+                            existingProfile = user,
+                            isProfileComplete = isProfileComplete,
+                            error = null
+                        )
+                    },
+                    onFailure = { exception ->
+                        _profileState.value = _profileState.value.copy(
+                            isLoading = false,
+                            error = exception.message
+                        )
+                    }
+                )
+        }
+    }
+
+    fun saveProfile(name: String, bio: String?, avatarUri: Uri?) {
+        if (name.isBlank()) {
+            _profileState.value = _profileState.value.copy(error = "Name is required")
+            return
+        }
+
+        viewModelScope.launch {
+            _profileState.value = _profileState.value.copy(isLoading = true, error = null)
+
+            updateUserProfileUseCase(
+                name = name,
+                bio = bio,
+                avatarUri = avatarUri
+            ).fold(
+                onSuccess = { updatedUser ->
+                    _profileState.value = _profileState.value.copy(
+                        isLoading = false,
+                        existingProfile = updatedUser,
+                        isProfileComplete = true,
+                        error = null
+                    )
+                },
+                onFailure = { exception ->
+                    _profileState.value = _profileState.value.copy(
+                        isLoading = false,
+                        error = exception.message ?: "Failed to update profile"
+                    )
+                }
+            )
+        }
+    }
+
+    fun clearError() {
+        _profileState.value = _profileState.value.copy(error = null)
+    }
+}
