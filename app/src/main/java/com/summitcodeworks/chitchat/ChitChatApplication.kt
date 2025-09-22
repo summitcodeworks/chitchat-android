@@ -11,8 +11,10 @@ class ChitChatApplication : Application() {
         super.onCreate()
 
         // Initialize NetworkMonitor
-        if (BuildConfig.DEBUG) {
+        try {
             NetworkMonitor.initialize(this)
+        } catch (e: Exception) {
+            // Handle initialization errors gracefully
         }
     }
 }

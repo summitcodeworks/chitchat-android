@@ -13,12 +13,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.summitcodeworks.networkmonitor.NetworkMonitor
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.summitcodeworks.chitchat.presentation.viewmodel.EnvironmentViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DebugScreen() {
+fun DebugScreen(
+    environmentViewModel: EnvironmentViewModel = hiltViewModel()
+) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var logsCount by remember { mutableIntStateOf(0) }
+
+    val currentEnvironment by environmentViewModel.currentEnvironment.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         NetworkMonitor.getInstance()?.let { monitor ->
@@ -43,6 +53,17 @@ fun DebugScreen() {
         ) {
             item {
                 DebugCard(
+                    title = "Current Environment",
+                    description = "${currentEnvironment.displayName} - ${currentEnvironment.apiBaseUrl}",
+                    icon = Icons.Default.Settings,
+                    onClick = {
+                        // Could add environment switching here if needed
+                    }
+                )
+            }
+
+            item {
+                DebugCard(
                     title = "Network Monitor",
                     description = "View HTTP requests and WebSocket events",
                     icon = Icons.Default.NetworkCheck,
@@ -59,7 +80,7 @@ fun DebugScreen() {
                     description = "Clear all network monitoring data",
                     icon = Icons.Default.Delete,
                     onClick = {
-                        kotlinx.coroutines.GlobalScope.launch {
+                        scope.launch {
                             NetworkMonitor.getInstance()?.clearLogs()
                             logsCount = 0
                         }
