@@ -30,6 +30,7 @@ import com.summitcodeworks.chitchat.presentation.viewmodel.CallsViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CallsScreen(
+    onNavigateBack: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: CallsViewModel = hiltViewModel()
 ) {
@@ -55,6 +56,11 @@ fun CallsScreen(
                         text = "Calls",
                         fontWeight = FontWeight.Bold
                     )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
                 },
                 actions = {
                     IconButton(onClick = { 

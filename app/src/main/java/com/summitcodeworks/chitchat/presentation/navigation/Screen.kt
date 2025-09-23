@@ -14,6 +14,9 @@ sealed class Screen(
     object Home : Screen("home")
     object Status : Screen("status")
     object Calls : Screen("calls")
+    object ContactPicker : Screen("contact_picker")
+    object StatusCamera : Screen("status_camera")
+    object CallContacts : Screen("call_contacts")
     object Demo : Screen("demo")
     object Debug : Screen("debug")
     

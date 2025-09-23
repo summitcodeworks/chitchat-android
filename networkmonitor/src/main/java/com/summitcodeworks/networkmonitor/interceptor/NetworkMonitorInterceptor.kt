@@ -58,6 +58,7 @@ class NetworkMonitorInterceptor @Inject constructor(
         val requestHeaders = headersToString(request.headers)
         val requestBody = getRequestBody(request)
         val requestSize = calculateRequestSize(request)
+        val curlCommand = generateCurlCommand(request, requestBody)
 
         return NetworkLog(
             requestId = requestId,
@@ -69,7 +70,8 @@ class NetworkMonitorInterceptor @Inject constructor(
             requestTime = requestTime,
             requestSize = requestSize,
             isSSL = request.url.isHttps,
-            protocol = "HTTP/1.1"
+            protocol = "HTTP/1.1",
+            curlCommand = curlCommand
         )
     }
 
@@ -89,6 +91,9 @@ class NetworkMonitorInterceptor @Inject constructor(
 
             // Get the existing log and update it
             val logs = networkLogDao.getAllLogs()
+            val requestBody = getRequestBody(response.request)
+            val curlCommand = generateCurlCommand(response.request, requestBody)
+
             // Find and update the log - simplified approach
             val updatedLog = NetworkLog(
                 requestId = requestId,
@@ -96,7 +101,7 @@ class NetworkMonitorInterceptor @Inject constructor(
                 method = response.request.method,
                 url = response.request.url.toString(),
                 requestHeaders = headersToString(response.request.headers),
-                requestBody = getRequestBody(response.request),
+                requestBody = requestBody,
                 responseCode = response.code,
                 responseHeaders = responseHeaders,
                 responseBody = responseBody,
@@ -106,7 +111,8 @@ class NetworkMonitorInterceptor @Inject constructor(
                 requestSize = calculateRequestSize(response.request),
                 responseSize = responseSize,
                 isSSL = response.request.url.isHttps,
-                protocol = response.protocol.toString()
+                protocol = response.protocol.toString(),
+                curlCommand = curlCommand
             )
 
             networkLogDao.insertLog(updatedLog)
@@ -182,5 +188,47 @@ class NetworkMonitorInterceptor @Inject constructor(
                 contentType.contains("xml") ||
                 contentType.contains("html") ||
                 contentType.contains("plain")
+    }
+
+    private fun generateCurlCommand(request: Request, requestBody: String?): String {
+        val curlBuilder = StringBuilder("curl")
+
+        // Add method
+        if (request.method != "GET") {
+            curlBuilder.append(" -X ${request.method}")
+        }
+
+        // Add headers
+        for (i in 0 until request.headers.size) {
+            val name = request.headers.name(i)
+            val value = request.headers.value(i)
+            curlBuilder.append(" \\\n  -H '$name: $value'")
+        }
+
+        // Add body for POST/PUT/PATCH requests
+        if (!requestBody.isNullOrEmpty() && request.method in listOf("POST", "PUT", "PATCH")) {
+            val escapedBody = requestBody.replace("'", "'\"'\"'")
+            curlBuilder.append(" \\\n  -d '$escapedBody'")
+        }
+
+        // Add URL (always last)
+        curlBuilder.append(" \\\n  '${request.url}'")
+
+        return curlBuilder.toString()
+    }
+
+    private fun generateWebSocketInfo(url: String, headers: okhttp3.Headers): String {
+        val wsBuilder = StringBuilder("WebSocket Connection:")
+        wsBuilder.append("\nURL: $url")
+        wsBuilder.append("\nProtocol: WebSocket")
+
+        if (headers.size > 0) {
+            wsBuilder.append("\nHeaders:")
+            for (i in 0 until headers.size) {
+                wsBuilder.append("\n  ${headers.name(i)}: ${headers.value(i)}")
+            }
+        }
+
+        return wsBuilder.toString()
     }
 }

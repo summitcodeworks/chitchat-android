@@ -138,5 +138,5 @@ class NetworkMonitorViewModel @Inject constructor(
 }
 
 enum class NetworkMonitorTab {
-    HTTP, WEBSOCKET, SUMMARY, FAILED
+    HTTP, WEBSOCKET, CURL, SUMMARY, FAILED
 }

@@ -74,7 +74,7 @@ class UserProfileViewModel @Inject constructor(
         }
     }
     
-    fun syncContacts(token: String, contacts: List<Contact>) {
+    fun syncContacts(token: String, contacts: List<SyncContact>) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
@@ -176,7 +176,7 @@ class UserProfileViewModel @Inject constructor(
     }
 }
 
-data class Contact(
+data class SyncContact(
     val phoneNumber: String,
     val displayName: String
 )

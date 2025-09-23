@@ -1,16 +1,11 @@
 package com.summitcodeworks.chitchat.di
 
-import com.summitcodeworks.chitchat.data.config.EnvironmentManager
+import com.summitcodeworks.chitchat.data.remote.ApiServiceFactory
 import com.summitcodeworks.chitchat.data.remote.api.*
-import com.summitcodeworks.networkmonitor.interceptor.NetworkMonitorInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
 
 @Module
@@ -18,64 +13,42 @@ import javax.inject.Singleton
 object NetworkModule {
 
     @Provides
-    @Singleton
-    fun provideOkHttpClient(
-        networkMonitorInterceptor: NetworkMonitorInterceptor
-    ): OkHttpClient {
-        return OkHttpClient.Builder()
-            .addInterceptor(networkMonitorInterceptor) // Add NetworkMonitor interceptor
-            .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
-            })
-            .build()
+    fun provideUserApiService(factory: ApiServiceFactory): UserApiService {
+        return factory.getUserApiService()
     }
 
     @Provides
-    @Singleton
-    fun provideRetrofit(
-        okHttpClient: OkHttpClient,
-        environmentManager: EnvironmentManager
-    ): Retrofit {
-        return Retrofit.Builder()
-            .baseUrl(environmentManager.getCurrentApiBaseUrl())
-            .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
+    fun provideMessageApiService(factory: ApiServiceFactory): MessageApiService {
+        return factory.getMessageApiService()
     }
 
     @Provides
-    @Singleton
-    fun provideUserApiService(retrofit: Retrofit): UserApiService {
-        return retrofit.create(UserApiService::class.java)
+    fun provideCallApiService(factory: ApiServiceFactory): CallApiService {
+        return factory.getCallApiService()
     }
 
     @Provides
-    @Singleton
-    fun provideMessageApiService(retrofit: Retrofit): MessageApiService {
-        return retrofit.create(MessageApiService::class.java)
+    fun provideStatusApiService(factory: ApiServiceFactory): StatusApiService {
+        return factory.getStatusApiService()
     }
 
     @Provides
-    @Singleton
-    fun provideCallApiService(retrofit: Retrofit): CallApiService {
-        return retrofit.create(CallApiService::class.java)
+    fun provideMediaApiService(factory: ApiServiceFactory): MediaApiService {
+        return factory.getMediaApiService()
     }
 
     @Provides
-    @Singleton
-    fun provideStatusApiService(retrofit: Retrofit): StatusApiService {
-        return retrofit.create(StatusApiService::class.java)
+    fun provideNotificationApiService(factory: ApiServiceFactory): NotificationApiService {
+        return factory.getNotificationApiService()
     }
 
     @Provides
-    @Singleton
-    fun provideMediaApiService(retrofit: Retrofit): MediaApiService {
-        return retrofit.create(MediaApiService::class.java)
+    fun provideGroupApiService(factory: ApiServiceFactory): GroupApiService {
+        return factory.getGroupApiService()
     }
 
     @Provides
-    @Singleton
-    fun provideNotificationApiService(retrofit: Retrofit): NotificationApiService {
-        return retrofit.create(NotificationApiService::class.java)
+    fun provideAdminApiService(factory: ApiServiceFactory): AdminApiService {
+        return factory.getAdminApiService()
     }
 }

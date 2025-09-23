@@ -57,7 +57,8 @@ fun DebugScreen(
                     description = "${currentEnvironment.displayName} - ${currentEnvironment.apiBaseUrl}",
                     icon = Icons.Default.Settings,
                     onClick = {
-                        // Could add environment switching here if needed
+                        // Environment switching is now available from the Home screen menu
+                        // This could show detailed environment info or settings
                     }
                 )
             }

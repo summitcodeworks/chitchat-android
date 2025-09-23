@@ -21,18 +21,21 @@ import kotlinx.coroutines.delay
 @Composable
 fun SplashScreen(
     onNavigateToAuth: () -> Unit,
-    onNavigateToProfileSetup: () -> Unit,
+    onNavigateToHome: () -> Unit,
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val authState by authViewModel.authState.collectAsState()
 
-    LaunchedEffect(Unit) {
-        delay(2000) // Show splash for 2 seconds
+    LaunchedEffect(authState) {
+        // Wait for authentication check to complete
+        if (!authState.isLoading) {
+            delay(2000) // Show splash for 2 seconds
 
-        if (authState.isAuthenticated) {
-            onNavigateToProfileSetup()
-        } else {
-            onNavigateToAuth()
+            if (authState.isAuthenticated) {
+                onNavigateToHome()
+            } else {
+                onNavigateToAuth()
+            }
         }
     }
     

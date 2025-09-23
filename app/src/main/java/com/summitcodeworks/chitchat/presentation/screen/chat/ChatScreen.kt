@@ -21,6 +21,7 @@ import com.summitcodeworks.chitchat.domain.model.Message
 import com.summitcodeworks.chitchat.domain.model.MessageType
 import com.summitcodeworks.chitchat.presentation.state.ChatState
 import com.summitcodeworks.chitchat.presentation.viewmodel.ChatViewModel
+import com.summitcodeworks.chitchat.presentation.viewmodel.AuthViewModel
 import com.summitcodeworks.chitchat.presentation.components.MessageBubble
 import com.summitcodeworks.chitchat.presentation.components.TypingIndicator
 import com.summitcodeworks.chitchat.presentation.components.MediaPickerBottomSheet
@@ -30,12 +31,14 @@ import com.summitcodeworks.chitchat.presentation.components.MediaPickerBottomShe
 fun ChatScreen(
     userId: Long,
     onNavigateBack: () -> Unit,
-    chatViewModel: ChatViewModel = hiltViewModel()
+    chatViewModel: ChatViewModel = hiltViewModel(),
+    authViewModel: AuthViewModel = hiltViewModel()
 ) {
     var messageText by remember { mutableStateOf("") }
     var showMediaPicker by remember { mutableStateOf(false) }
     var isTyping by remember { mutableStateOf(false) }
     val chatState by chatViewModel.chatState.collectAsState()
+    val authState by authViewModel.authState.collectAsState()
     val listState = rememberLazyListState()
     
     LaunchedEffect(chatState.messages) {
@@ -152,9 +155,9 @@ fun ChatScreen(
                 
                 FloatingActionButton(
                     onClick = {
-                        if (messageText.isNotBlank()) {
+                        if (messageText.isNotBlank() && authState.token != null) {
                             chatViewModel.sendMessage(
-                                token = "mock_token", // In real app, get from auth state
+                                token = authState.token!!,
                                 receiverId = userId,
                                 content = messageText,
                                 messageType = MessageType.TEXT

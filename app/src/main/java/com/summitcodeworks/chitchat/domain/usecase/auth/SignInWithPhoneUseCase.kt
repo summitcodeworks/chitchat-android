@@ -52,4 +52,12 @@ class SignInWithPhoneUseCase @Inject constructor(
         // Simplified for now - would need proper mapping
         return flowOf(null)
     }
+
+    fun getCurrentFirebaseUser() = authRepository.getCurrentUser()
+
+    suspend fun getCurrentUserToken() = authRepository.getCurrentUserToken()
+
+    suspend fun signOut() = authRepository.signOut()
+
+    fun observeAuthState() = authRepository.observeAuthState()
 }

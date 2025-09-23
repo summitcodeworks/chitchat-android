@@ -14,6 +14,9 @@ import com.summitcodeworks.chitchat.presentation.screen.profile.ProfileSetupScre
 import com.summitcodeworks.chitchat.presentation.screen.splash.SplashScreen
 import com.summitcodeworks.chitchat.presentation.screen.status.StatusScreen
 import com.summitcodeworks.chitchat.presentation.screen.calls.CallsScreen
+import com.summitcodeworks.chitchat.presentation.screen.contacts.ContactPickerScreen
+import com.summitcodeworks.chitchat.presentation.screen.status.StatusCameraScreen
+import com.summitcodeworks.chitchat.presentation.screen.calls.CallContactsScreen
 import com.summitcodeworks.chitchat.presentation.screen.demo.ComponentDemoScreen
 import com.summitcodeworks.chitchat.presentation.screen.debug.DebugScreen
 import com.summitcodeworks.chitchat.presentation.viewmodel.AuthViewModel
@@ -36,8 +39,8 @@ fun ChitChatNavigation(
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 },
-                onNavigateToProfileSetup = {
-                    navController.navigate(Screen.ProfileSetup.route) {
+                onNavigateToHome = {
+                    navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 }
@@ -68,6 +71,18 @@ fun ChitChatNavigation(
             HomeScreen(
                 onNavigateToChat = { userId ->
                     navController.navigate(Screen.Chat.createRoute(userId))
+                },
+                onNavigateToContactPicker = {
+                    navController.navigate(Screen.ContactPicker.route)
+                },
+                onNavigateToStatusCamera = {
+                    navController.navigate(Screen.StatusCamera.route)
+                },
+                onNavigateToCallContacts = {
+                    navController.navigate(Screen.CallContacts.route)
+                },
+                onNavigateToDebug = {
+                    navController.navigate(Screen.Debug.route)
                 }
             )
         }
@@ -88,15 +103,60 @@ fun ChitChatNavigation(
         }
         
         composable(Screen.Status.route) {
-            StatusScreen()
+            StatusScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
-        
+
         composable(Screen.Calls.route) {
-            CallsScreen()
+            CallsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
         
         composable(Screen.Demo.route) {
             ComponentDemoScreen()
+        }
+
+        composable(Screen.ContactPicker.route) {
+            ContactPickerScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onContactSelected = { userId ->
+                    navController.navigate(Screen.Chat.createRoute(userId)) {
+                        popUpTo(Screen.Home.route)
+                    }
+                }
+            )
+        }
+
+        composable(Screen.StatusCamera.route) {
+            StatusCameraScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Screen.CallContacts.route) {
+            CallContactsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onVoiceCall = { userId ->
+                    // TODO: Implement voice call
+                    navController.popBackStack()
+                },
+                onVideoCall = { userId ->
+                    // TODO: Implement video call
+                    navController.popBackStack()
+                }
+            )
         }
 
         composable(Screen.Debug.route) {

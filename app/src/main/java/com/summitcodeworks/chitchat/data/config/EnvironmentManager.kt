@@ -19,6 +19,7 @@ class EnvironmentManager @Inject constructor(
     }
 
     private val sharedPrefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val environmentChangeCallbacks = mutableListOf<() -> Unit>()
 
     private val _currentEnvironment = MutableStateFlow(getSavedEnvironment())
     val currentEnvironment: StateFlow<Environment> = _currentEnvironment.asStateFlow()
@@ -38,6 +39,17 @@ class EnvironmentManager @Inject constructor(
         sharedPrefs.edit()
             .putString(KEY_ENVIRONMENT, environment.displayName)
             .apply()
+
+        // Notify all callbacks about environment change
+        environmentChangeCallbacks.forEach { it() }
+    }
+
+    fun addEnvironmentChangeCallback(callback: () -> Unit) {
+        environmentChangeCallbacks.add(callback)
+    }
+
+    fun removeEnvironmentChangeCallback(callback: () -> Unit) {
+        environmentChangeCallbacks.remove(callback)
     }
 
     fun getCurrentApiBaseUrl(): String = _currentEnvironment.value.apiBaseUrl

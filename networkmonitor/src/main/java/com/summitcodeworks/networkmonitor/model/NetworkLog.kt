@@ -23,7 +23,8 @@ data class NetworkLog(
     val responseSize: Long = 0,
     val error: String? = null,
     val protocol: String? = null,
-    val isSSL: Boolean = false
+    val isSSL: Boolean = false,
+    val curlCommand: String? = null // cURL representation of the request
 )
 
 enum class NetworkType {

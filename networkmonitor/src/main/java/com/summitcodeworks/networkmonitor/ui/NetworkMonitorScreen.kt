@@ -13,6 +13,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -85,6 +88,7 @@ fun NetworkMonitorScreen(
             when (selectedTab) {
                 NetworkMonitorTab.HTTP -> HttpLogsContent(viewModel, onNavigateToDetails)
                 NetworkMonitorTab.WEBSOCKET -> WebSocketEventsContent(viewModel)
+                NetworkMonitorTab.CURL -> CurlCommandsContent(viewModel)
                 NetworkMonitorTab.SUMMARY -> SummaryContent(networkSummary)
                 NetworkMonitorTab.FAILED -> FailedRequestsContent(viewModel, onNavigateToDetails)
             }
@@ -208,6 +212,20 @@ private fun SummaryContent(summary: com.summitcodeworks.networkmonitor.model.Net
                 value = "${summary.averageResponseTime}ms",
                 icon = Icons.Default.Timer
             )
+        }
+    }
+}
+
+@Composable
+private fun CurlCommandsContent(viewModel: NetworkMonitorViewModel) {
+    val logs by viewModel.networkLogs.collectAsStateWithLifecycle()
+
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(logs.filter { it.curlCommand != null }) { log ->
+            CurlCommandItem(log = log)
         }
     }
 }
@@ -348,6 +366,85 @@ private fun WebSocketEventItem(event: WebSocketEvent) {
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CurlCommandItem(log: NetworkLog) {
+    val clipboardManager = LocalClipboardManager.current
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${log.method} ${log.responseCode ?: "---"}",
+                    fontWeight = FontWeight.Bold,
+                    color = getMethodColor(log.method)
+                )
+
+                Row {
+                    IconButton(
+                        onClick = {
+                            log.curlCommand?.let { curl ->
+                                clipboardManager.setText(AnnotatedString(curl))
+                            }
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = "Copy cURL",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    Text(
+                        text = formatTimestamp(log.requestTime),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.CenterVertically)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = log.url,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (log.curlCommand != null) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = log.curlCommand,
+                        modifier = Modifier.padding(12.dp),
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

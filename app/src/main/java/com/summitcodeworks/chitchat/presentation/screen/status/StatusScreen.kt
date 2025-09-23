@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,12 +25,15 @@ import com.summitcodeworks.chitchat.presentation.components.StatusPreviewCard
 import com.summitcodeworks.chitchat.presentation.components.ProfileAvatar
 import com.summitcodeworks.chitchat.presentation.components.StatusAvatar
 import com.summitcodeworks.chitchat.presentation.viewmodel.StatusViewModel
+import com.summitcodeworks.chitchat.presentation.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatusScreen(
+    onNavigateBack: () -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: StatusViewModel = hiltViewModel()
+    viewModel: StatusViewModel = hiltViewModel(),
+    authViewModel: AuthViewModel = hiltViewModel()
 ) {
     var showCreateStatus by remember { mutableStateOf(false) }
     
@@ -38,11 +42,13 @@ fun StatusScreen(
     val contactsStatuses by viewModel.contactsStatuses.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val authState by authViewModel.authState.collectAsStateWithLifecycle()
     
     // Load statuses on first composition
-    LaunchedEffect(Unit) {
-        // Assuming we have a token from somewhere (AuthViewModel or similar)
-        // viewModel.loadActiveStatuses("token")
+    LaunchedEffect(authState.token) {
+        authState.token?.let { token ->
+            viewModel.loadActiveStatuses(token)
+        }
     }
     
     Scaffold(
@@ -53,6 +59,11 @@ fun StatusScreen(
                         text = "Status",
                         fontWeight = FontWeight.Bold
                     )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Outlined.Close, contentDescription = "Close")
+                    }
                 },
                 actions = {
                     IconButton(onClick = { 
@@ -83,18 +94,45 @@ fun StatusScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // My Status Section
-            MyStatusSection(
-                onStatusClick = { 
-                    // TODO: Navigate to my status view
-                    // Could show full screen view of user's own status
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
-            )
-            
-            Divider(modifier = Modifier.padding(horizontal = 16.dp))
-            
-            // Recent Updates Section
-            RecentUpdatesSection(activeStatuses)
+            } else {
+                // My Status Section
+                MyStatusSection(
+                    onStatusClick = {
+                        showCreateStatus = true
+                    }
+                )
+
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                // Recent Updates Section
+                RecentUpdatesSection(
+                    activeStatuses = if (activeStatuses.isEmpty()) getMockStatuses() else activeStatuses
+                )
+            }
+
+            error?.let { errorMessage ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Text(
+                        text = errorMessage,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
         }
     }
     
@@ -203,7 +241,7 @@ fun StatusViewScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Outlined.Close, contentDescription = "Close")
                     }
                 },
                 actions = {

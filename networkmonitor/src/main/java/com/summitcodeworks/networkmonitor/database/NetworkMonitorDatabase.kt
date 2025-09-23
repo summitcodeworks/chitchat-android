@@ -10,7 +10,7 @@ import com.summitcodeworks.networkmonitor.model.WebSocketEvent
 
 @Database(
     entities = [NetworkLog::class, WebSocketEvent::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -27,7 +27,9 @@ abstract class NetworkMonitorDatabase : RoomDatabase() {
                 context.applicationContext,
                 NetworkMonitorDatabase::class.java,
                 DATABASE_NAME
-            ).build()
+            )
+            .fallbackToDestructiveMigration() // This will recreate the database if schema changes
+            .build()
         }
     }
 }

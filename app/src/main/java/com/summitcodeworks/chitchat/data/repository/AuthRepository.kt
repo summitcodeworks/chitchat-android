@@ -14,6 +14,8 @@ import com.summitcodeworks.chitchat.data.remote.api.UserApiService
 import com.summitcodeworks.chitchat.data.remote.dto.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -245,6 +247,18 @@ class AuthRepository @Inject constructor(
             }
         } else {
             flow { emit(null) }
+        }
+    }
+
+    fun observeAuthState(): Flow<FirebaseUser?> = kotlinx.coroutines.flow.callbackFlow {
+        val authStateListener = FirebaseAuth.AuthStateListener { auth ->
+            trySend(auth.currentUser)
+        }
+
+        firebaseAuth.addAuthStateListener(authStateListener)
+
+        awaitClose {
+            firebaseAuth.removeAuthStateListener(authStateListener)
         }
     }
 }

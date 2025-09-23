@@ -11,6 +11,7 @@ import com.summitcodeworks.chitchat.domain.model.User
 import com.summitcodeworks.chitchat.domain.usecase.auth.SendOtpUseCase
 import com.summitcodeworks.chitchat.domain.usecase.auth.SignInWithPhoneUseCase
 import com.summitcodeworks.chitchat.presentation.state.AuthState
+import com.summitcodeworks.chitchat.data.auth.AuthTokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +22,8 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val sendOtpUseCase: SendOtpUseCase,
-    private val signInWithPhoneUseCase: SignInWithPhoneUseCase
+    private val signInWithPhoneUseCase: SignInWithPhoneUseCase,
+    private val authTokenManager: AuthTokenManager
 ) : ViewModel() {
     
     private val _authState = MutableStateFlow(AuthState())
@@ -33,7 +35,52 @@ class AuthViewModel @Inject constructor(
     private var _verificationId: String? = null
     
     init {
+        checkAuthenticationStatus()
         observeCurrentUser()
+        observeTokenManager()
+    }
+
+    private fun observeTokenManager() {
+        viewModelScope.launch {
+            authTokenManager.currentToken.collect { token ->
+                _authState.value = _authState.value.copy(
+                    token = token,
+                    isAuthenticated = token != null
+                )
+            }
+        }
+    }
+
+    private fun checkAuthenticationStatus() {
+        viewModelScope.launch {
+            _authState.value = _authState.value.copy(isLoading = true)
+
+            try {
+                // Check if user is already signed in with Firebase
+                val firebaseUser = signInWithPhoneUseCase.getCurrentFirebaseUser()
+                if (firebaseUser != null) {
+                    // User is authenticated with Firebase
+                    _authState.value = _authState.value.copy(
+                        isAuthenticated = true,
+                        token = "authenticated", // We can get actual token later if needed
+                        isLoading = false
+                    )
+                } else {
+                    // No Firebase user found
+                    _authState.value = _authState.value.copy(
+                        isAuthenticated = false,
+                        isLoading = false
+                    )
+                }
+            } catch (e: Exception) {
+                // Error checking auth state
+                _authState.value = _authState.value.copy(
+                    isAuthenticated = false,
+                    isLoading = false,
+                    error = e.message
+                )
+            }
+        }
     }
 
     fun sendOtp(phoneNumber: String, activity: Activity) {
@@ -85,6 +132,7 @@ class AuthViewModel @Inject constructor(
             signInWithPhoneUseCase(phoneNumber, verificationId, code)
                 .fold(
                     onSuccess = { token ->
+                        authTokenManager.setToken(token)
                         _authState.value = _authState.value.copy(
                             isLoading = false,
                             isAuthenticated = true,
@@ -103,10 +151,15 @@ class AuthViewModel @Inject constructor(
     
     private fun observeCurrentUser() {
         viewModelScope.launch {
-            signInWithPhoneUseCase.observeCurrentUser().collect { user ->
-                _currentUser.value = user
-                if (user == null) {
-                    _authState.value = _authState.value.copy(isAuthenticated = false)
+            // Observe Firebase auth state changes
+            signInWithPhoneUseCase.observeAuthState().collect { firebaseUser ->
+                if (firebaseUser != null) {
+                    _authState.value = _authState.value.copy(isAuthenticated = true)
+                } else {
+                    _authState.value = _authState.value.copy(
+                        isAuthenticated = false,
+                        token = null
+                    )
                 }
             }
         }
@@ -114,5 +167,14 @@ class AuthViewModel @Inject constructor(
     
     fun clearError() {
         _authState.value = _authState.value.copy(error = null, codeSent = false)
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            signInWithPhoneUseCase.signOut()
+            authTokenManager.clearToken()
+            _authState.value = AuthState() // Reset to default state
+            _currentUser.value = null
+        }
     }
 }
