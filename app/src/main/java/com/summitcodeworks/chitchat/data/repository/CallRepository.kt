@@ -18,7 +18,7 @@ class CallRepository @Inject constructor(
     
     suspend fun initiateCall(token: String, request: InitiateCallRequest): Result<CallDto> {
         return try {
-            val response = callApiService.initiateCall("Bearer $token", request)
+            val response = callApiService.initiateCall("", request)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 val callDto = response.body()?.data
@@ -47,7 +47,7 @@ class CallRepository @Inject constructor(
                 sdpAnswer = sdpAnswer
             )
             
-            val response = callApiService.answerCall("Bearer $token", sessionId, request)
+            val response = callApiService.answerCall("", sessionId, request)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 val callDto = response.body()?.data
@@ -71,7 +71,7 @@ class CallRepository @Inject constructor(
     
     suspend fun rejectCall(token: String, sessionId: String, reason: String? = null): Result<CallDto> {
         return try {
-            val response = callApiService.rejectCall("Bearer $token", sessionId, reason)
+            val response = callApiService.rejectCall("", sessionId, reason)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 val callDto = response.body()?.data
@@ -95,7 +95,7 @@ class CallRepository @Inject constructor(
     
     suspend fun endCall(token: String, sessionId: String, reason: String? = null): Result<CallDto> {
         return try {
-            val response = callApiService.endCall("Bearer $token", sessionId, reason)
+            val response = callApiService.endCall("", sessionId, reason)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 val callDto = response.body()?.data
@@ -119,7 +119,7 @@ class CallRepository @Inject constructor(
     
     suspend fun getCallHistory(token: String, page: Int = 0, size: Int = 20): Result<CallPageResponse> {
         return try {
-            val response = callApiService.getCallHistory("Bearer $token", page, size)
+            val response = callApiService.getCallHistory("", page, size)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 val pageResponse = response.body()?.data
@@ -143,7 +143,7 @@ class CallRepository @Inject constructor(
     
     suspend fun getMissedCalls(token: String): Result<List<CallDto>> {
         return try {
-            val response = callApiService.getMissedCalls("Bearer $token")
+            val response = callApiService.getMissedCalls("")
             
             if (response.isSuccessful && response.body()?.success == true) {
                 val calls = response.body()?.data
@@ -163,7 +163,7 @@ class CallRepository @Inject constructor(
     
     suspend fun getRecentCalls(token: String, limit: Int = 10): Result<List<CallDto>> {
         return try {
-            val response = callApiService.getRecentCalls("Bearer $token", limit)
+            val response = callApiService.getRecentCalls("", limit)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 val calls = response.body()?.data

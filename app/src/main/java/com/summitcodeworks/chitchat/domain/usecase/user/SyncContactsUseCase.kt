@@ -8,7 +8,6 @@ class SyncContactsUseCase @Inject constructor(
     private val authRepository: AuthRepository
 ) {
     suspend operator fun invoke(
-        token: String,
         contacts: List<Contact>
     ): Result<List<User>> {
         return try {
@@ -18,8 +17,8 @@ class SyncContactsUseCase @Inject constructor(
                     displayName = contact.displayName
                 )
             }
-            
-            val result = authRepository.syncContacts(token, contactDtos)
+
+            val result = authRepository.syncContacts(contactDtos)
             result.fold(
                 onSuccess = { userDtos ->
                     val users = userDtos.map { userDto ->

@@ -41,7 +41,6 @@ class ChitChatIntegrationService @Inject constructor(
                     val idToken = idTokenResult.result
                     
                     val authResult = authRepository.authenticateWithBackend(
-                        idToken = idToken.token ?: "",
                         name = firebaseUser.displayName,
                         deviceInfo = "Android"
                     )
@@ -77,8 +76,8 @@ class ChitChatIntegrationService @Inject constructor(
     }
     
     // Real-time connection
-    fun connectWebSocket(token: String) {
-        webSocketManager.connectAll(token)
+    suspend fun connectWebSocket(token: String) {
+        webSocketManager.connectAll()
     }
     
     fun disconnectWebSocket() {

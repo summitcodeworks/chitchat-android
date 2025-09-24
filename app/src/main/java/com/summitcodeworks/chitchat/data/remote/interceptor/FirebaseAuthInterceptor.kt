@@ -1,0 +1,141 @@
+package com.summitcodeworks.chitchat.data.remote.interceptor
+
+import android.util.Log
+import com.summitcodeworks.chitchat.data.auth.FirebaseAuthManager
+import kotlinx.coroutines.runBlocking
+import okhttp3.Interceptor
+import okhttp3.Request
+import okhttp3.Response
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * Firebase Authentication Interceptor
+ *
+ * Automatically adds Firebase ID tokens to API requests and handles token refresh
+ * following the ChitChat Authentication Guide:
+ * - Adds "Authorization: Bearer <firebase-id-token>" header to all requests
+ * - Handles 401 responses by refreshing token and retrying once
+ * - Excludes public endpoints that don't require authentication
+ */
+@Singleton
+class FirebaseAuthInterceptor @Inject constructor(
+    private val firebaseAuthManager: FirebaseAuthManager
+) : Interceptor {
+
+    companion object {
+        private const val TAG = "FirebaseAuthInterceptor"
+        private const val AUTHORIZATION_HEADER = "Authorization"
+
+        // Public endpoints that don't require authentication as per API docs
+        private val PUBLIC_ENDPOINTS = setOf(
+            "/api/users/register",
+            "/api/users/login",
+            "/api/users/verify-otp",
+            "/api/users/refresh-token",
+            "/actuator/health",
+            "/actuator/info",
+            "/actuator/metrics"
+        )
+    }
+
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val originalRequest = chain.request()
+
+        // Skip authentication for public endpoints
+        if (isPublicEndpoint(originalRequest.url.encodedPath)) {
+            Log.d(TAG, "Skipping authentication for public endpoint: ${originalRequest.url.encodedPath}")
+            return chain.proceed(originalRequest)
+        }
+
+        // Get the current token
+        val token = runBlocking { firebaseAuthManager.getValidToken() }
+
+        if (token == null) {
+            Log.w(TAG, "No Firebase token available for request: ${originalRequest.url}")
+            return chain.proceed(originalRequest)
+        }
+
+        // Add authorization header to the request
+        val authenticatedRequest = originalRequest.newBuilder()
+            .header(AUTHORIZATION_HEADER, "Bearer $token")
+            .build()
+
+        Log.d(TAG, "Adding Firebase token to request: ${authenticatedRequest.url.encodedPath}")
+
+        // Execute the request
+        val response = chain.proceed(authenticatedRequest)
+
+        // Handle 401 Unauthorized responses
+        return if (response.code == 401) {
+            handleUnauthorizedResponse(chain, originalRequest, response)
+        } else {
+            response
+        }
+    }
+
+    /**
+     * Handles 401 Unauthorized responses by refreshing the token and retrying once
+     */
+    private fun handleUnauthorizedResponse(
+        chain: Interceptor.Chain,
+        originalRequest: Request,
+        originalResponse: Response
+    ): Response {
+        Log.w(TAG, "Received 401 Unauthorized for ${originalRequest.url.encodedPath}, attempting token refresh")
+
+        // Close the original response to free up connection
+        originalResponse.close()
+
+        return runBlocking {
+            try {
+                // Force refresh the Firebase ID token
+                Log.d(TAG, "Forcing token refresh due to 401 error")
+                val refreshedToken = firebaseAuthManager.refreshToken()
+
+                if (refreshedToken != null) {
+                    Log.d(TAG, "Token refreshed successfully, retrying request to ${originalRequest.url.encodedPath}")
+
+                    // Retry the request with the new token
+                    val retryRequest = originalRequest.newBuilder()
+                        .header(AUTHORIZATION_HEADER, "Bearer $refreshedToken")
+                        .build()
+
+                    val retryResponse = chain.proceed(retryRequest)
+                    Log.d(TAG, "Retry request completed with status: ${retryResponse.code}")
+                    retryResponse
+                } else {
+                    Log.e(TAG, "Failed to refresh token, returning 401 response")
+
+                    // Create a new 401 response since we closed the original
+                    createUnauthorizedResponse(originalRequest)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during token refresh for ${originalRequest.url.encodedPath}", e)
+                createUnauthorizedResponse(originalRequest)
+            }
+        }
+    }
+
+    /**
+     * Creates a 401 Unauthorized response
+     */
+    private fun createUnauthorizedResponse(request: Request): Response {
+        return Response.Builder()
+            .request(request)
+            .protocol(okhttp3.Protocol.HTTP_1_1)
+            .code(401)
+            .message("Unauthorized - Firebase token invalid or expired")
+            .body(okhttp3.ResponseBody.create(null, ""))
+            .build()
+    }
+
+    /**
+     * Checks if the endpoint is public and doesn't require authentication
+     */
+    private fun isPublicEndpoint(path: String): Boolean {
+        return PUBLIC_ENDPOINTS.any { publicPath ->
+            path.startsWith(publicPath)
+        }
+    }
+}

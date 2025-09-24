@@ -46,9 +46,9 @@ class HomeViewModel @Inject constructor(
         }
     }
     
-    fun updateOnlineStatus(token: String, isOnline: Boolean) {
+    fun updateOnlineStatus(isOnline: Boolean) {
         viewModelScope.launch {
-            updateOnlineStatusUseCase(token, isOnline)
+            updateOnlineStatusUseCase(isOnline)
                 .fold(
                     onSuccess = {
                         // Update local user state

@@ -74,7 +74,7 @@ class UserProfileViewModel @Inject constructor(
         }
     }
     
-    fun syncContacts(token: String, contacts: List<SyncContact>) {
+    fun syncContacts(contacts: List<SyncContact>) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
@@ -87,7 +87,7 @@ class UserProfileViewModel @Inject constructor(
                 )
             }
             
-            syncContactsUseCase(token, useCaseContacts)
+            syncContactsUseCase(useCaseContacts)
                 .fold(
                     onSuccess = { syncedUsers ->
                         // Store synced users directly
@@ -102,12 +102,12 @@ class UserProfileViewModel @Inject constructor(
         }
     }
     
-    fun blockUser(token: String, userId: Long) {
+    fun blockUser(userId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             
-            blockUserUseCase(token, userId)
+            blockUserUseCase(userId)
                 .fold(
                     onSuccess = {
                         // Update local contacts to mark user as blocked
@@ -128,12 +128,12 @@ class UserProfileViewModel @Inject constructor(
         }
     }
     
-    fun unblockUser(token: String, userId: Long) {
+    fun unblockUser(userId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             
-            unblockUserUseCase(token, userId)
+            unblockUserUseCase(userId)
                 .fold(
                     onSuccess = {
                         // Update local contacts to mark user as unblocked
@@ -154,9 +154,9 @@ class UserProfileViewModel @Inject constructor(
         }
     }
     
-    fun updateOnlineStatus(token: String, isOnline: Boolean) {
+    fun updateOnlineStatus(isOnline: Boolean) {
         viewModelScope.launch {
-            updateOnlineStatusUseCase(token, isOnline)
+            updateOnlineStatusUseCase(isOnline)
                 .fold(
                     onSuccess = {
                         // Update local user state

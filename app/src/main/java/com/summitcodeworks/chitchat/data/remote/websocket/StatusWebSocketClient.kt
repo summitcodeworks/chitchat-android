@@ -31,8 +31,8 @@ class StatusWebSocketClient @Inject constructor(
     private var reconnectJob: Job? = null
     private var heartbeatJob: Job? = null
     
-    fun connect(token: String, url: String = "") {
-        val webSocketUrl = if (url.isNotEmpty()) url else "${environmentManager.getCurrentWebSocketBaseUrl()}ws/status"
+    suspend fun connect(endpoint: String = "status") {
+        val webSocketUrl = "${environmentManager.getCurrentWebSocketBaseUrl()}ws/status"
         if (_connectionState.value == ConnectionState.CONNECTED) {
             return
         }
@@ -48,7 +48,7 @@ class StatusWebSocketClient @Inject constructor(
                 _connectionState.value = ConnectionState.CONNECTED
                 
                 // Send authentication
-                val authMessage = AuthMessage(token = token)
+                val authMessage = AuthMessage(token = "")
                 sendMessage(authMessage)
                 
                 // Start heartbeat
@@ -90,13 +90,13 @@ class StatusWebSocketClient @Inject constructor(
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 _connectionState.value = ConnectionState.DISCONNECTED
                 stopHeartbeat()
-                scheduleReconnect(token, url)
+                scheduleReconnect()
             }
             
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 _connectionState.value = ConnectionState.DISCONNECTED
                 stopHeartbeat()
-                scheduleReconnect(token, url)
+                scheduleReconnect()
             }
         })
     }
@@ -161,12 +161,12 @@ class StatusWebSocketClient @Inject constructor(
         heartbeatJob = null
     }
     
-    private fun scheduleReconnect(token: String, url: String) {
+    private fun scheduleReconnect() {
         reconnectJob?.cancel()
         reconnectJob = CoroutineScope(Dispatchers.IO).launch {
             delay(5000) // Wait 5 seconds before reconnecting
             if (_connectionState.value == ConnectionState.DISCONNECTED) {
-                connect(token, url)
+                connect()
             }
         }
     }

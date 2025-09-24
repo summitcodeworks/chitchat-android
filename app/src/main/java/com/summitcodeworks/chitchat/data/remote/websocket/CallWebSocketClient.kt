@@ -1,6 +1,7 @@
 package com.summitcodeworks.chitchat.data.remote.websocket
 
 import com.google.gson.Gson
+import com.summitcodeworks.chitchat.data.auth.FirebaseAuthManager
 import com.summitcodeworks.chitchat.data.config.EnvironmentManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -12,7 +13,8 @@ import javax.inject.Singleton
 @Singleton
 class CallWebSocketClient @Inject constructor(
     private val gson: Gson,
-    private val environmentManager: EnvironmentManager
+    private val environmentManager: EnvironmentManager,
+    private val firebaseAuthManager: FirebaseAuthManager
 ) {
     private var webSocket: WebSocket? = null
     private val client = OkHttpClient.Builder()
@@ -31,31 +33,38 @@ class CallWebSocketClient @Inject constructor(
     private var reconnectJob: Job? = null
     private var heartbeatJob: Job? = null
     
-    fun connect(token: String, url: String = "") {
-        val webSocketUrl = if (url.isNotEmpty()) url else "${environmentManager.getCurrentWebSocketBaseUrl()}ws/calls"
+    suspend fun connect(endpoint: String = "calls") {
         if (_connectionState.value == ConnectionState.CONNECTED) {
             return
         }
-        
+
         _connectionState.value = ConnectionState.CONNECTING
-        
-        val request = Request.Builder()
-            .url(webSocketUrl)
-            .build()
-        
-        webSocket = client.newWebSocket(request, object : WebSocketListener() {
-            override fun onOpen(webSocket: WebSocket, response: Response) {
-                _connectionState.value = ConnectionState.CONNECTED
-                
-                // Send authentication
-                val authMessage = AuthMessage(token = token)
-                sendMessage(authMessage)
-                
-                // Start heartbeat
-                startHeartbeat()
+
+        try {
+            // Get Firebase ID token automatically
+            val firebaseToken = firebaseAuthManager.getValidToken()
+            if (firebaseToken == null) {
+                _connectionState.value = ConnectionState.DISCONNECTED
+                return
             }
+
+            // Create WebSocket URL with token as query parameter
+            val baseUrl = environmentManager.getCurrentWebSocketBaseUrl()
+            val webSocketUrl = "${baseUrl}ws/$endpoint?token=$firebaseToken"
+
+            val request = Request.Builder()
+                .url(webSocketUrl)
+                .build()
+
+            webSocket = client.newWebSocket(request, object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    _connectionState.value = ConnectionState.CONNECTED
+
+                    // Start heartbeat
+                    startHeartbeat()
+                }
             
-            override fun onMessage(webSocket: WebSocket, text: String) {
+                override fun onMessage(webSocket: WebSocket, text: String) {
                 try {
                     val message = gson.fromJson(text, WebSocketMessage::class.java)
                     _messages.tryEmit(message)
@@ -88,18 +97,22 @@ class CallWebSocketClient @Inject constructor(
                 _connectionState.value = ConnectionState.DISCONNECTING
             }
             
-            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                _connectionState.value = ConnectionState.DISCONNECTED
-                stopHeartbeat()
-                scheduleReconnect(token, url)
-            }
-            
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                _connectionState.value = ConnectionState.DISCONNECTED
-                stopHeartbeat()
-                scheduleReconnect(token, url)
-            }
-        })
+                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                    _connectionState.value = ConnectionState.DISCONNECTED
+                    stopHeartbeat()
+                    scheduleReconnect(endpoint)
+                }
+
+                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    _connectionState.value = ConnectionState.DISCONNECTED
+                    stopHeartbeat()
+                    scheduleReconnect(endpoint)
+                }
+            })
+
+        } catch (e: Exception) {
+            _connectionState.value = ConnectionState.DISCONNECTED
+        }
     }
     
     fun disconnect() {
@@ -143,12 +156,12 @@ class CallWebSocketClient @Inject constructor(
         heartbeatJob = null
     }
     
-    private fun scheduleReconnect(token: String, url: String) {
+    private fun scheduleReconnect(endpoint: String) {
         reconnectJob?.cancel()
         reconnectJob = CoroutineScope(Dispatchers.IO).launch {
             delay(5000) // Wait 5 seconds before reconnecting
             if (_connectionState.value == ConnectionState.DISCONNECTED) {
-                connect(token, url)
+                connect(endpoint)
             }
         }
     }

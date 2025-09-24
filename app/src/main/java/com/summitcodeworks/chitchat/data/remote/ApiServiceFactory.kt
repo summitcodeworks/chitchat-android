@@ -2,7 +2,7 @@ package com.summitcodeworks.chitchat.data.remote
 
 import com.summitcodeworks.chitchat.data.config.EnvironmentManager
 import com.summitcodeworks.chitchat.data.remote.api.*
-import com.summitcodeworks.chitchat.data.remote.interceptor.AuthInterceptor
+import com.summitcodeworks.chitchat.data.remote.interceptor.FirebaseAuthInterceptor
 import com.summitcodeworks.chitchat.data.remote.interceptor.ErrorResponseInterceptor
 import com.summitcodeworks.networkmonitor.interceptor.NetworkMonitorInterceptor
 import okhttp3.OkHttpClient
@@ -16,7 +16,7 @@ import javax.inject.Singleton
 class ApiServiceFactory @Inject constructor(
     private val environmentManager: EnvironmentManager,
     private val networkMonitorInterceptor: NetworkMonitorInterceptor,
-    private val authInterceptor: AuthInterceptor,
+    private val firebaseAuthInterceptor: FirebaseAuthInterceptor,
     private val errorResponseInterceptor: ErrorResponseInterceptor
 ) {
     private var currentBaseUrl: String? = null
@@ -37,7 +37,7 @@ class ApiServiceFactory @Inject constructor(
             currentBaseUrl = currentUrl
 
             val okHttpClient = OkHttpClient.Builder()
-                .addInterceptor(authInterceptor)
+                .addInterceptor(firebaseAuthInterceptor)
                 .addInterceptor(errorResponseInterceptor)
                 .addInterceptor(networkMonitorInterceptor)
                 .addInterceptor(HttpLoggingInterceptor().apply {
@@ -73,13 +73,18 @@ class ApiServiceFactory @Inject constructor(
         currentBaseUrl = null
     }
 
+    // These methods are now handled automatically by FirebaseAuthInterceptor
+    // but kept for backward compatibility if needed elsewhere
+    @Deprecated("Token management is now handled automatically by FirebaseAuthInterceptor")
     fun setAuthToken(token: String?) {
-        authInterceptor.setAuthToken(token)
+        // No-op: Firebase tokens are managed automatically
     }
 
+    @Deprecated("Token management is now handled automatically by FirebaseAuthInterceptor")
     fun clearAuthToken() {
-        authInterceptor.clearAuthToken()
+        // No-op: Firebase tokens are managed automatically
     }
 
-    fun getAuthToken(): String? = authInterceptor.getAuthToken()
+    @Deprecated("Use FirebaseAuthManager.getCurrentToken() instead")
+    fun getAuthToken(): String? = null
 }

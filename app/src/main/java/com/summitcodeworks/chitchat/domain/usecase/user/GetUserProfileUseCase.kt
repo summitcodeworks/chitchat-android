@@ -9,8 +9,7 @@ class GetUserProfileUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(): Result<User> {
         return try {
-            val token = authRepository.getCurrentUserToken() ?: return Result.failure(Exception("User not authenticated"))
-            val result = authRepository.getUserProfile(token)
+            val result = authRepository.getUserProfile()
             result.fold(
                 onSuccess = { userDto ->
                     val user = User(

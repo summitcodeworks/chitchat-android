@@ -2,6 +2,11 @@ package com.summitcodeworks.chitchat.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -19,6 +24,7 @@ import com.summitcodeworks.chitchat.presentation.screen.status.StatusCameraScree
 import com.summitcodeworks.chitchat.presentation.screen.calls.CallContactsScreen
 import com.summitcodeworks.chitchat.presentation.screen.demo.ComponentDemoScreen
 import com.summitcodeworks.chitchat.presentation.screen.debug.DebugScreen
+import com.summitcodeworks.chitchat.presentation.screen.settings.SettingsScreen
 import com.summitcodeworks.chitchat.presentation.viewmodel.AuthViewModel
 
 @Composable
@@ -27,11 +33,14 @@ fun ChitChatNavigation(
     navController: NavHostController = rememberNavController(),
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
-    NavHost(
-        navController = navController,
-        startDestination = Screen.Splash.route,
-        modifier = modifier
-    ) {
+    Scaffold(
+        modifier = modifier.fillMaxSize()
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Splash.route,
+            modifier = Modifier.padding(innerPadding)
+        ) {
         composable(Screen.Splash.route) {
             SplashScreen(
                 onNavigateToAuth = {
@@ -83,6 +92,9 @@ fun ChitChatNavigation(
                 },
                 onNavigateToDebug = {
                     navController.navigate(Screen.Debug.route)
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
                 }
             )
         }
@@ -161,6 +173,20 @@ fun ChitChatNavigation(
 
         composable(Screen.Debug.route) {
             DebugScreen()
+        }
+        
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToAuth = {
+                    navController.navigate(Screen.Auth.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                }
+            )
+        }
         }
     }
 }

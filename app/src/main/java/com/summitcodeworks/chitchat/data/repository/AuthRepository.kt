@@ -7,6 +7,7 @@ import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import android.app.Activity
 import java.util.concurrent.TimeUnit
+import com.summitcodeworks.chitchat.data.auth.FirebaseAuthManager
 import com.summitcodeworks.chitchat.data.local.dao.UserDao
 import com.summitcodeworks.chitchat.data.local.entity.UserEntity
 import com.summitcodeworks.chitchat.data.mapper.UserMapper
@@ -25,6 +26,7 @@ class AuthRepository @Inject constructor(
     private val userApiService: UserApiService,
     private val userDao: UserDao,
     private val firebaseAuth: FirebaseAuth,
+    private val firebaseAuthManager: FirebaseAuthManager,
     private val userMapper: UserMapper
 ) {
 
@@ -58,23 +60,27 @@ class AuthRepository @Inject constructor(
         }
     }
     
-    suspend fun authenticateWithBackend(idToken: String, name: String? = null, deviceInfo: String? = null): Result<FirebaseAuthResponse> {
+    suspend fun authenticateWithBackend(name: String? = null, deviceInfo: String? = null): Result<FirebaseAuthResponse> {
         return try {
+            // Get Firebase ID token automatically
+            val idToken = firebaseAuthManager.getValidToken()
+                ?: return Result.failure(Exception("No Firebase ID token available"))
+
             val request = FirebaseAuthRequest(
                 idToken = idToken,
                 name = name,
                 deviceInfo = deviceInfo
             )
-            
+
             val response = userApiService.authenticateWithFirebase(request)
-            
+
             if (response.isSuccessful && response.body()?.success == true) {
                 val authResponse = response.body()?.data
                 if (authResponse != null) {
                     // Save user to local database
                     val userEntity = userMapper.dtoToEntity(authResponse.user)
                     userDao.insertUser(userEntity)
-                    
+
                     Result.success(authResponse)
                 } else {
                     Result.failure(Exception("Invalid response data"))
@@ -88,17 +94,18 @@ class AuthRepository @Inject constructor(
         }
     }
     
-    suspend fun getUserProfile(token: String): Result<UserDto> {
+    suspend fun getUserProfile(): Result<UserDto> {
         return try {
-            val response = userApiService.getUserProfile("Bearer $token")
-            
+            // Token is automatically added by FirebaseAuthInterceptor
+            val response = userApiService.getUserProfile()
+
             if (response.isSuccessful && response.body()?.success == true) {
                 val userDto = response.body()?.data
                 if (userDto != null) {
                     // Update local database
                     val userEntity = userMapper.dtoToEntity(userDto)
                     userDao.insertUser(userEntity)
-                    
+
                     Result.success(userDto)
                 } else {
                     Result.failure(Exception("Invalid response data"))
@@ -112,15 +119,16 @@ class AuthRepository @Inject constructor(
         }
     }
     
-    suspend fun updateUserProfile(token: String, name: String, avatarUrl: String? = null, about: String? = null): Result<UserDto> {
+    suspend fun updateUserProfile(name: String, avatarUrl: String? = null, about: String? = null): Result<UserDto> {
         return try {
             val request = UpdateProfileRequest(
                 name = name,
                 avatarUrl = avatarUrl,
                 about = about
             )
-            
-            val response = userApiService.updateUserProfile("Bearer $token", request)
+
+            // Token is automatically added by FirebaseAuthInterceptor
+            val response = userApiService.updateUserProfile(request)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 val userDto = response.body()?.data
@@ -142,10 +150,11 @@ class AuthRepository @Inject constructor(
         }
     }
     
-    suspend fun syncContacts(token: String, contacts: List<ContactDto>): Result<List<UserDto>> {
+    suspend fun syncContacts(contacts: List<ContactDto>): Result<List<UserDto>> {
         return try {
             val request = ContactSyncRequest(contacts = contacts)
-            val response = userApiService.syncContacts("Bearer $token", request)
+            // Token is automatically added by FirebaseAuthInterceptor
+            val response = userApiService.syncContacts(request)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 val users = response.body()?.data
@@ -167,9 +176,10 @@ class AuthRepository @Inject constructor(
         }
     }
     
-    suspend fun blockUser(token: String, userId: Long): Result<Unit> {
+    suspend fun blockUser(userId: Long): Result<Unit> {
         return try {
-            val response = userApiService.blockUser("Bearer $token", userId)
+            // Token is automatically added by FirebaseAuthInterceptor
+            val response = userApiService.blockUser(userId)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 // Update local database
@@ -184,9 +194,10 @@ class AuthRepository @Inject constructor(
         }
     }
     
-    suspend fun unblockUser(token: String, userId: Long): Result<Unit> {
+    suspend fun unblockUser(userId: Long): Result<Unit> {
         return try {
-            val response = userApiService.unblockUser("Bearer $token", userId)
+            // Token is automatically added by FirebaseAuthInterceptor
+            val response = userApiService.unblockUser(userId)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 // Update local database
@@ -201,9 +212,10 @@ class AuthRepository @Inject constructor(
         }
     }
     
-    suspend fun updateOnlineStatus(token: String, isOnline: Boolean): Result<Unit> {
+    suspend fun updateOnlineStatus(isOnline: Boolean): Result<Unit> {
         return try {
-            val response = userApiService.updateOnlineStatus("Bearer $token", isOnline)
+            // Token is automatically added by FirebaseAuthInterceptor
+            val response = userApiService.updateOnlineStatus(isOnline)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 // Update local database if needed
@@ -226,15 +238,11 @@ class AuthRepository @Inject constructor(
     }
     
     suspend fun getCurrentUserToken(): String? {
-        return try {
-            firebaseAuth.currentUser?.getIdToken(false)?.await()?.token
-        } catch (e: Exception) {
-            null
-        }
+        return firebaseAuthManager.getValidToken()
     }
 
     suspend fun signOut() {
-        firebaseAuth.signOut()
+        firebaseAuthManager.signOut()
         userDao.deleteAllUsers()
     }
     
@@ -250,15 +258,5 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    fun observeAuthState(): Flow<FirebaseUser?> = kotlinx.coroutines.flow.callbackFlow {
-        val authStateListener = FirebaseAuth.AuthStateListener { auth ->
-            trySend(auth.currentUser)
-        }
-
-        firebaseAuth.addAuthStateListener(authStateListener)
-
-        awaitClose {
-            firebaseAuth.removeAuthStateListener(authStateListener)
-        }
-    }
+    fun observeAuthState(): Flow<FirebaseUser?> = firebaseAuthManager.observeAuthState()
 }

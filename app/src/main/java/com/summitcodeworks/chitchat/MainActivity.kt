@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.core.view.WindowCompat
 import com.summitcodeworks.chitchat.presentation.navigation.ChitChatNavigation
 import com.summitcodeworks.chitchat.ui.theme.ChitChatTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -18,13 +19,18 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        // Configure status bar for white background with black text
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = true
+        }
+        window.statusBarColor = android.graphics.Color.WHITE
+        
         setContent {
             ChitChatTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ChitChatNavigation(
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                ChitChatNavigation(
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }

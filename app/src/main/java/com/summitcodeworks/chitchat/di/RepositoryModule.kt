@@ -19,9 +19,10 @@ object RepositoryModule {
         userApiService: com.summitcodeworks.chitchat.data.remote.api.UserApiService,
         userDao: com.summitcodeworks.chitchat.data.local.dao.UserDao,
         firebaseAuth: com.google.firebase.auth.FirebaseAuth,
+        firebaseAuthManager: com.summitcodeworks.chitchat.data.auth.FirebaseAuthManager,
         userMapper: com.summitcodeworks.chitchat.data.mapper.UserMapper
     ): AuthRepository {
-        return AuthRepository(userApiService, userDao, firebaseAuth, userMapper)
+        return AuthRepository(userApiService, userDao, firebaseAuth, firebaseAuthManager, userMapper)
     }
     
     @Provides

@@ -19,6 +19,7 @@ sealed class Screen(
     object CallContacts : Screen("call_contacts")
     object Demo : Screen("demo")
     object Debug : Screen("debug")
+    object Settings : Screen("settings")
     
     object Chat : Screen(
         route = "chat/{userId}",

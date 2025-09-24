@@ -19,6 +19,8 @@ import com.summitcodeworks.chitchat.presentation.viewmodel.AuthViewModel
 import com.summitcodeworks.chitchat.presentation.viewmodel.HomeViewModel
 import com.summitcodeworks.chitchat.presentation.viewmodel.EnvironmentViewModel
 import com.summitcodeworks.chitchat.data.config.Environment
+import com.summitcodeworks.chitchat.presentation.components.NewChatBottomSheet
+import com.summitcodeworks.chitchat.domain.model.Contact
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +30,7 @@ fun HomeScreen(
     onNavigateToStatusCamera: () -> Unit = {},
     onNavigateToCallContacts: () -> Unit = {},
     onNavigateToDebug: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     authViewModel: AuthViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
     environmentViewModel: EnvironmentViewModel = hiltViewModel()
@@ -41,6 +44,7 @@ fun HomeScreen(
     var selectedTabIndex by remember { mutableStateOf(0) }
     var showDropdownMenu by remember { mutableStateOf(false) }
     var showEnvironmentDialog by remember { mutableStateOf(false) }
+    var showNewChatBottomSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -48,9 +52,15 @@ fun HomeScreen(
                 title = {
                     Text(
                         text = "ChitChat",
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.headlineSmall
                     )
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                ),
                 actions = {
                     IconButton(onClick = {
                         // TODO: Navigate to search screen
@@ -92,7 +102,7 @@ fun HomeScreen(
                                 text = { Text("Settings") },
                                 onClick = {
                                     showDropdownMenu = false
-                                    // TODO: Navigate to settings screen
+                                    onNavigateToSettings()
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.Settings, contentDescription = null)
@@ -107,7 +117,7 @@ fun HomeScreen(
             when (selectedTabIndex) {
                 0 -> { // Chats tab
                     FloatingActionButton(
-                        onClick = onNavigateToContactPicker
+                        onClick = { showNewChatBottomSheet = true }
                     ) {
                         Icon(Icons.Default.Chat, contentDescription = "New Chat")
                     }
@@ -138,22 +148,57 @@ fun HomeScreen(
             // Tab Row
             TabRow(
                 selectedTabIndex = selectedTabIndex,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                indicator = { tabPositions ->
+                    TabRowDefaults.Indicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        height = 3.dp
+                    )
+                }
             ) {
                 Tab(
                     selected = selectedTabIndex == 0,
                     onClick = { selectedTabIndex = 0 },
-                    text = { Text("Chats") }
+                    text = { 
+                        Text(
+                            "Chats",
+                            color = if (selectedTabIndex == 0) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (selectedTabIndex == 0) FontWeight.Bold else FontWeight.Normal
+                        ) 
+                    }
                 )
                 Tab(
                     selected = selectedTabIndex == 1,
                     onClick = { selectedTabIndex = 1 },
-                    text = { Text("Status") }
+                    text = { 
+                        Text(
+                            "Status",
+                            color = if (selectedTabIndex == 1) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (selectedTabIndex == 1) FontWeight.Bold else FontWeight.Normal
+                        ) 
+                    }
                 )
                 Tab(
                     selected = selectedTabIndex == 2,
                     onClick = { selectedTabIndex = 2 },
-                    text = { Text("Calls") }
+                    text = { 
+                        Text(
+                            "Calls",
+                            color = if (selectedTabIndex == 2) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (selectedTabIndex == 2) FontWeight.Bold else FontWeight.Normal
+                        ) 
+                    }
                 )
             }
 
@@ -175,6 +220,32 @@ fun HomeScreen(
                 showEnvironmentDialog = false
             },
             onDismiss = { showEnvironmentDialog = false }
+        )
+    }
+
+    // New Chat Bottom Sheet
+    if (showNewChatBottomSheet) {
+        NewChatBottomSheet(
+            onDismiss = { showNewChatBottomSheet = false },
+            onNewGroupChat = {
+                // TODO: Navigate to new group chat creation
+            },
+            onNewBroadcast = {
+                // TODO: Navigate to new broadcast creation
+            },
+            onLinkedDevices = {
+                // TODO: Navigate to linked devices screen
+            },
+            onStarredMessages = {
+                // TODO: Navigate to starred messages screen
+            },
+            onSettings = {
+                // TODO: Navigate to settings screen
+            },
+            onContactSelected = { contact ->
+                // Navigate to chat with selected contact
+                onNavigateToChat(contact.id)
+            }
         )
     }
 }

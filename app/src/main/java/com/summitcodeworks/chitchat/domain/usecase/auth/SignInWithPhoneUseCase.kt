@@ -24,7 +24,6 @@ class SignInWithPhoneUseCase @Inject constructor(
                     val idToken = firebaseUser.getIdToken(false).await()
                     
                     val authResult = authRepository.authenticateWithBackend(
-                        idToken = idToken.token ?: "",
                         name = firebaseUser.displayName,
                         deviceInfo = "Android"
                     )

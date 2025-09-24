@@ -45,10 +45,9 @@ class WebSocketManager @Inject constructor(
     private val _notificationEvent = MutableSharedFlow<NotificationEvent>()
     val notificationEvent: SharedFlow<NotificationEvent> = _notificationEvent.asSharedFlow()
     
-    fun connect(token: String, url: String = "") {
-        val webSocketUrl = if (url.isNotEmpty()) url else "${environmentManager.getCurrentWebSocketBaseUrl()}ws/messages"
-        webSocketClient.connect(token, webSocketUrl)
-        
+    suspend fun connect(endpoint: String = "messages") {
+        webSocketClient.connect(endpoint)
+
         // Start listening to WebSocket messages and route them to specific flows
         setupMessageRouting()
     }

@@ -57,11 +57,11 @@ class MultiWebSocketManager @Inject constructor(
     private val _notificationEvent = MutableSharedFlow<NotificationEvent>()
     val notificationEvent: SharedFlow<NotificationEvent> = _notificationEvent.asSharedFlow()
     
-    fun connectAll(token: String) {
-        messageWebSocket.connect(token)
-        callWebSocket.connect(token)
-        statusWebSocket.connect(token)
-        
+    suspend fun connectAll() {
+        messageWebSocket.connect("messages")
+        callWebSocket.connect("calls")
+        statusWebSocket.connect("status")
+
         // Start listening to WebSocket messages and route them to specific flows
         setupMessageRouting()
     }

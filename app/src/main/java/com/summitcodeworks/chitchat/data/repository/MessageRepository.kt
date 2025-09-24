@@ -22,7 +22,7 @@ class MessageRepository @Inject constructor(
     
     suspend fun sendMessage(token: String, request: SendMessageRequest): Result<MessageDto> {
         return try {
-            val response = messageApiService.sendMessage("Bearer $token", request)
+            val response = messageApiService.sendMessage(request)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 val messageDto = response.body()?.data
@@ -47,7 +47,7 @@ class MessageRepository @Inject constructor(
     suspend fun getConversationMessages(token: String, userId: Long, page: Int = 0, size: Int = 20): Result<MessagePageResponse> {
         return try {
             val response = messageApiService.getConversationMessages(
-                "Bearer $token", userId, page, size
+                userId, page, size
             )
             
             if (response.isSuccessful && response.body()?.success == true) {
@@ -73,7 +73,7 @@ class MessageRepository @Inject constructor(
     suspend fun getGroupMessages(token: String, groupId: Long, page: Int = 0, size: Int = 20): Result<MessagePageResponse> {
         return try {
             val response = messageApiService.getGroupMessages(
-                "Bearer $token", groupId, page, size
+                groupId, page, size
             )
             
             if (response.isSuccessful && response.body()?.success == true) {
@@ -98,7 +98,7 @@ class MessageRepository @Inject constructor(
     
     suspend fun searchMessages(token: String, query: String): Result<List<MessageDto>> {
         return try {
-            val response = messageApiService.searchMessages("Bearer $token", query)
+            val response = messageApiService.searchMessages(query)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 val messages = response.body()?.data
@@ -118,7 +118,7 @@ class MessageRepository @Inject constructor(
     
     suspend fun markMessageAsRead(token: String, messageId: String): Result<Unit> {
         return try {
-            val response = messageApiService.markMessageAsRead("Bearer $token", messageId)
+            val response = messageApiService.markMessageAsRead(messageId)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 // Update local database
@@ -135,7 +135,7 @@ class MessageRepository @Inject constructor(
     
     suspend fun deleteMessage(token: String, messageId: String, deleteForEveryone: Boolean = false): Result<Unit> {
         return try {
-            val response = messageApiService.deleteMessage("Bearer $token", messageId, deleteForEveryone)
+            val response = messageApiService.deleteMessage(messageId, deleteForEveryone)
             
             if (response.isSuccessful && response.body()?.success == true) {
                 // Update local database

@@ -8,13 +8,11 @@ interface MessageApiService {
     
     @POST("api/messages/send")
     suspend fun sendMessage(
-        @Header("Authorization") token: String,
         @Body request: SendMessageRequest
     ): Response<ApiResponse<MessageDto>>
     
     @GET("api/messages/conversation/{userId}")
     suspend fun getConversationMessages(
-        @Header("Authorization") token: String,
         @Path("userId") userId: Long,
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20,
@@ -23,7 +21,6 @@ interface MessageApiService {
     
     @GET("api/messages/group/{groupId}")
     suspend fun getGroupMessages(
-        @Header("Authorization") token: String,
         @Path("groupId") groupId: Long,
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20,
@@ -32,19 +29,16 @@ interface MessageApiService {
     
     @GET("api/messages/search")
     suspend fun searchMessages(
-        @Header("Authorization") token: String,
         @Query("query") query: String
     ): Response<ApiResponse<List<MessageDto>>>
     
     @PUT("api/messages/{messageId}/read")
     suspend fun markMessageAsRead(
-        @Header("Authorization") token: String,
         @Path("messageId") messageId: String
     ): Response<ApiResponse<Unit>>
     
     @DELETE("api/messages/{messageId}")
     suspend fun deleteMessage(
-        @Header("Authorization") token: String,
         @Path("messageId") messageId: String,
         @Query("deleteForEveryone") deleteForEveryone: Boolean = false
     ): Response<ApiResponse<Unit>>
@@ -52,7 +46,6 @@ interface MessageApiService {
     // Group Management APIs
     @POST("api/messages/groups")
     suspend fun createGroup(
-        @Header("Authorization") token: String,
         @Body request: CreateGroupRequest
     ): Response<ApiResponse<GroupDto>>
     
