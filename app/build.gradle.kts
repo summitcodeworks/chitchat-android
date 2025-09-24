@@ -107,6 +107,10 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
     
+    // Chucker for network debugging
+    debugImplementation("com.github.chuckerteam.chucker:library:4.2.0")
+    releaseImplementation("com.github.chuckerteam.chucker:library-no-op:4.2.0")
+    
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

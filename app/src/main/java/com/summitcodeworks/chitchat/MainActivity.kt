@@ -10,6 +10,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
+import com.chuckerteam.chucker.Chucker
 import com.summitcodeworks.chitchat.presentation.navigation.ChitChatNavigation
 import com.summitcodeworks.chitchat.ui.theme.ChitChatTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -25,6 +26,9 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightStatusBars = true
         }
         window.statusBarColor = android.graphics.Color.WHITE
+        
+        // Launch Chucker for network debugging (only in debug builds)
+        Chucker.show(this)
         
         setContent {
             ChitChatTheme {

@@ -5,6 +5,7 @@ import com.summitcodeworks.chitchat.data.remote.api.*
 import com.summitcodeworks.chitchat.data.remote.interceptor.FirebaseAuthInterceptor
 import com.summitcodeworks.chitchat.data.remote.interceptor.ErrorResponseInterceptor
 import com.summitcodeworks.networkmonitor.interceptor.NetworkMonitorInterceptor
+import com.chuckerteam.chucker.ChuckerInterceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -17,7 +18,8 @@ class ApiServiceFactory @Inject constructor(
     private val environmentManager: EnvironmentManager,
     private val networkMonitorInterceptor: NetworkMonitorInterceptor,
     private val firebaseAuthInterceptor: FirebaseAuthInterceptor,
-    private val errorResponseInterceptor: ErrorResponseInterceptor
+    private val errorResponseInterceptor: ErrorResponseInterceptor,
+    private val chuckerInterceptor: ChuckerInterceptor
 ) {
     private var currentBaseUrl: String? = null
     private var retrofit: Retrofit? = null
@@ -40,6 +42,7 @@ class ApiServiceFactory @Inject constructor(
                 .addInterceptor(firebaseAuthInterceptor)
                 .addInterceptor(errorResponseInterceptor)
                 .addInterceptor(networkMonitorInterceptor)
+                .addInterceptor(chuckerInterceptor)
                 .addInterceptor(HttpLoggingInterceptor().apply {
                     level = HttpLoggingInterceptor.Level.BODY
                 })
