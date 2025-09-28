@@ -10,6 +10,7 @@ sealed class Screen(
 ) {
     object Splash : Screen("splash")
     object Auth : Screen("auth")
+    object OtpAuth : Screen("otp_auth")
     object ProfileSetup : Screen("profile_setup")
     object Home : Screen("home")
     object Status : Screen("status")

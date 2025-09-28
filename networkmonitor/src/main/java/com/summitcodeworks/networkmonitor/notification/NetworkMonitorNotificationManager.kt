@@ -20,6 +20,12 @@ import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Network Monitor Notification Manager
+ * 
+ * Manages persistent notifications for network monitoring similar to Chucker.
+ * Provides easy access to network logs from anywhere in the app.
+ */
 @Singleton
 class NetworkMonitorNotificationManager @Inject constructor(
     private val context: Context,
@@ -124,6 +130,41 @@ class NetworkMonitorNotificationManager @Inject constructor(
 
     fun hideNotification() {
         notificationManager.cancel(NOTIFICATION_ID)
+    }
+
+    /**
+     * Starts the persistent notification service for network monitoring
+     */
+    fun startNotificationService() {
+        val intent = Intent(context, NetworkMonitorNotificationService::class.java).apply {
+            action = NetworkMonitorNotificationService.ACTION_START_MONITORING
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+    }
+
+    /**
+     * Stops the persistent notification service
+     */
+    fun stopNotificationService() {
+        val intent = Intent(context, NetworkMonitorNotificationService::class.java).apply {
+            action = NetworkMonitorNotificationService.ACTION_STOP_MONITORING
+        }
+        context.startService(intent)
+    }
+
+    /**
+     * Clears all network logs
+     */
+    fun clearLogs() {
+        val intent = Intent(context, NetworkMonitorNotificationService::class.java).apply {
+            action = NetworkMonitorNotificationService.ACTION_CLEAR_LOGS
+        }
+        context.startService(intent)
     }
 
     fun updateSummaryNotification(summary: NetworkSummary?) {

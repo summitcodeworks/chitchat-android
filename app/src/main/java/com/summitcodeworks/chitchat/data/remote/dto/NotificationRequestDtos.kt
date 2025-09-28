@@ -12,6 +12,10 @@ data class UpdateDeviceTokenRequest(
     val deviceType: String
 )
 
+data class DeviceTokenUpdateRequest(
+    val deviceToken: String
+)
+
 data class NotificationSettingsDto(
     val notificationsEnabled: Boolean = true,
     val soundEnabled: Boolean = true,

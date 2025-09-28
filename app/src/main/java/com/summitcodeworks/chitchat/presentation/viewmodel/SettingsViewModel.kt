@@ -2,7 +2,7 @@ package com.summitcodeworks.chitchat.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.summitcodeworks.chitchat.data.auth.FirebaseAuthManager
+import com.summitcodeworks.chitchat.data.auth.OtpAuthManager
 import com.summitcodeworks.chitchat.data.repository.AuthRepository
 import com.summitcodeworks.chitchat.domain.model.User
 import com.summitcodeworks.chitchat.domain.usecase.user.GetUserProfileUseCase
@@ -16,7 +16,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val firebaseAuthManager: FirebaseAuthManager,
+    private val otpAuthManager: OtpAuthManager,
     private val getUserProfileUseCase: GetUserProfileUseCase
 ) : ViewModel() {
 
@@ -85,7 +85,7 @@ class SettingsViewModel @Inject constructor(
 
     fun getFreshTokenForTesting() {
         viewModelScope.launch {
-            firebaseAuthManager.getFreshTokenForTesting()
+            otpAuthManager.getCurrentToken()
         }
     }
 }

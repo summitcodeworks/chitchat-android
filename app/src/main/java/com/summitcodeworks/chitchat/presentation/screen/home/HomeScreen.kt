@@ -15,8 +15,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.summitcodeworks.chitchat.presentation.viewmodel.AuthViewModel
 import com.summitcodeworks.chitchat.presentation.viewmodel.HomeViewModel
+import com.summitcodeworks.chitchat.presentation.viewmodel.HomeScreenAuthViewModel
 import com.summitcodeworks.chitchat.presentation.viewmodel.EnvironmentViewModel
 import com.summitcodeworks.chitchat.data.config.Environment
 import com.summitcodeworks.chitchat.presentation.components.NewChatBottomSheet
@@ -31,15 +31,24 @@ fun HomeScreen(
     onNavigateToCallContacts: () -> Unit = {},
     onNavigateToDebug: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
-    authViewModel: AuthViewModel = hiltViewModel(),
+    onNavigateToAuth: () -> Unit = {},
+    homeScreenAuthViewModel: HomeScreenAuthViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
     environmentViewModel: EnvironmentViewModel = hiltViewModel()
 ) {
-    val currentUser by authViewModel.currentUser.collectAsState()
+    val isAuthenticated by homeScreenAuthViewModel.otpAuthManager.isAuthenticated.collectAsState()
+    val currentUser by homeScreenAuthViewModel.otpAuthManager.currentUser.collectAsState()
     val user by homeViewModel.user.collectAsStateWithLifecycle()
     val isLoading by homeViewModel.isLoading.collectAsStateWithLifecycle()
     val error by homeViewModel.error.collectAsStateWithLifecycle()
     val currentEnvironment by environmentViewModel.currentEnvironment.collectAsStateWithLifecycle()
+
+    // Authentication guard - redirect to auth if not properly authenticated
+    LaunchedEffect(isAuthenticated) {
+        if (!isAuthenticated) {
+            onNavigateToAuth()
+        }
+    }
 
     var selectedTabIndex by remember { mutableStateOf(0) }
     var showDropdownMenu by remember { mutableStateOf(false) }
@@ -106,6 +115,17 @@ fun HomeScreen(
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.Settings, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Sign Out") },
+                                onClick = {
+                                    showDropdownMenu = false
+                                    homeScreenAuthViewModel.otpAuthManager.signOut()
+                                    onNavigateToAuth()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.ExitToApp, contentDescription = null)
                                 }
                             )
                         }

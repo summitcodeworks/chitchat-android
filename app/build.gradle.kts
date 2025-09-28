@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
+    // Keep google-services for Firebase messaging
     alias(libs.plugins.google.services)
 }
 
@@ -86,9 +87,8 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.gson)
     
-    // Firebase
+    // Firebase - Keep only messaging for push notifications
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
     implementation(libs.firebase.messaging)
     
     // WebSocket
@@ -108,8 +108,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     
     // Chucker for network debugging
-    debugImplementation("com.github.chuckerteam.chucker:library:4.2.0")
-    releaseImplementation("com.github.chuckerteam.chucker:library-no-op:4.2.0")
+    // debugImplementation("com.github.chuckerteam.chucker:library:4.2.0")
+    // releaseImplementation("com.github.chuckerteam.chucker:library-no-op:4.2.0")
     
     // Testing
     testImplementation(libs.junit)

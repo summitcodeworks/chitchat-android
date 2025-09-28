@@ -25,7 +25,7 @@ import com.summitcodeworks.chitchat.presentation.components.StatusPreviewCard
 import com.summitcodeworks.chitchat.presentation.components.ProfileAvatar
 import com.summitcodeworks.chitchat.presentation.components.StatusAvatar
 import com.summitcodeworks.chitchat.presentation.viewmodel.StatusViewModel
-import com.summitcodeworks.chitchat.presentation.viewmodel.AuthViewModel
+import com.summitcodeworks.chitchat.data.auth.OtpAuthManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,7 +33,7 @@ fun StatusScreen(
     onNavigateBack: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: StatusViewModel = hiltViewModel(),
-    authViewModel: AuthViewModel = hiltViewModel()
+    otpAuthManager: OtpAuthManager = hiltViewModel<com.summitcodeworks.chitchat.presentation.viewmodel.HomeScreenAuthViewModel>().otpAuthManager
 ) {
     var showCreateStatus by remember { mutableStateOf(false) }
     
@@ -42,11 +42,11 @@ fun StatusScreen(
     val contactsStatuses by viewModel.contactsStatuses.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
-    val authState by authViewModel.authState.collectAsStateWithLifecycle()
-    
+    val currentToken by otpAuthManager.currentToken.collectAsStateWithLifecycle()
+
     // Load statuses on first composition
-    LaunchedEffect(authState.token) {
-        authState.token?.let { token ->
+    LaunchedEffect(currentToken) {
+        currentToken?.let { token ->
             viewModel.loadActiveStatuses(token)
         }
     }

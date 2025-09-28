@@ -31,7 +31,9 @@ class FirebaseAuthInterceptor @Inject constructor(
         private val PUBLIC_ENDPOINTS = setOf(
             "/api/users/register",
             "/api/users/login",
+            "/api/users/send-otp",
             "/api/users/verify-otp",
+            "/api/users/authenticate",
             "/api/users/refresh-token",
             "/actuator/health",
             "/actuator/info",

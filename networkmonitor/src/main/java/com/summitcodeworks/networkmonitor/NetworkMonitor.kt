@@ -63,17 +63,31 @@ class NetworkMonitor @Inject constructor(
     }
 
     /**
+     * Start persistent notification service (like Chucker)
+     */
+    fun startNotificationService() {
+        notificationManager.startNotificationService()
+    }
+
+    /**
+     * Stop persistent notification service
+     */
+    fun stopNotificationService() {
+        notificationManager.stopNotificationService()
+    }
+
+    /**
      * Show the notification with network activity summary
      */
     fun showNotification() {
-        // Notification is automatically shown when NetworkMonitorNotificationManager is initialized
+        startNotificationService()
     }
 
     /**
      * Hide the notification
      */
     fun hideNotification() {
-        notificationManager.hideNotification()
+        stopNotificationService()
     }
 
     /**

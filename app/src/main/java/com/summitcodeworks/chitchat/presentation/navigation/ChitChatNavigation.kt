@@ -12,7 +12,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.summitcodeworks.chitchat.presentation.screen.auth.AuthScreen
+// AuthScreen removed - using OtpAuthScreen
+import com.summitcodeworks.chitchat.presentation.screen.auth.OtpAuthScreen
 import com.summitcodeworks.chitchat.presentation.screen.chat.ChatScreen
 import com.summitcodeworks.chitchat.presentation.screen.home.HomeScreen
 import com.summitcodeworks.chitchat.presentation.screen.profile.ProfileSetupScreen
@@ -25,13 +26,11 @@ import com.summitcodeworks.chitchat.presentation.screen.calls.CallContactsScreen
 import com.summitcodeworks.chitchat.presentation.screen.demo.ComponentDemoScreen
 import com.summitcodeworks.chitchat.presentation.screen.debug.DebugScreen
 import com.summitcodeworks.chitchat.presentation.screen.settings.SettingsScreen
-import com.summitcodeworks.chitchat.presentation.viewmodel.AuthViewModel
 
 @Composable
 fun ChitChatNavigation(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController(),
-    authViewModel: AuthViewModel = hiltViewModel()
+    navController: NavHostController = rememberNavController()
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize()
@@ -44,7 +43,7 @@ fun ChitChatNavigation(
         composable(Screen.Splash.route) {
             SplashScreen(
                 onNavigateToAuth = {
-                    navController.navigate(Screen.Auth.route) {
+                    navController.navigate(Screen.OtpAuth.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 },
@@ -56,11 +55,13 @@ fun ChitChatNavigation(
             )
         }
         
-        composable(Screen.Auth.route) {
-            AuthScreen(
-                onNavigateToProfileSetup = {
-                    navController.navigate(Screen.ProfileSetup.route) {
-                        popUpTo(Screen.Auth.route) { inclusive = true }
+        // Legacy Auth screen removed - now using OTP authentication
+        
+        composable(Screen.OtpAuth.route) {
+            OtpAuthScreen(
+                onAuthSuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.OtpAuth.route) { inclusive = true }
                     }
                 }
             )
@@ -95,6 +96,11 @@ fun ChitChatNavigation(
                 },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
+                },
+                onNavigateToAuth = {
+                    navController.navigate(Screen.OtpAuth.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
                 }
             )
         }
@@ -181,7 +187,7 @@ fun ChitChatNavigation(
                     navController.popBackStack()
                 },
                 onNavigateToAuth = {
-                    navController.navigate(Screen.Auth.route) {
+                    navController.navigate(Screen.OtpAuth.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 }

@@ -15,27 +15,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.summitcodeworks.chitchat.R
-import com.summitcodeworks.chitchat.presentation.viewmodel.AuthViewModel
+import com.summitcodeworks.chitchat.presentation.viewmodel.SplashViewModel
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
     onNavigateToAuth: () -> Unit,
-    onNavigateToHome: () -> Unit,
-    authViewModel: AuthViewModel = hiltViewModel()
+    onNavigateToHome: () -> Unit
 ) {
-    val authState by authViewModel.authState.collectAsState()
+    val splashViewModel = hiltViewModel<SplashViewModel>()
+    val otpAuthManager = splashViewModel.otpAuthManager
+    val isAuthenticated by otpAuthManager.isAuthenticated.collectAsState()
+    val currentToken by otpAuthManager.currentToken.collectAsState()
 
-    LaunchedEffect(authState) {
-        // Wait for authentication check to complete
-        if (!authState.isLoading) {
-            delay(2000) // Show splash for 2 seconds
+    LaunchedEffect(Unit) {
+        delay(2000) // Show splash for 2 seconds
 
-            if (authState.isAuthenticated) {
-                onNavigateToHome()
-            } else {
-                onNavigateToAuth()
-            }
+        // Check if user is properly authenticated with OTP
+        if (isAuthenticated && currentToken != null) {
+            // Update device token on app launch for authenticated users
+            splashViewModel.updateDeviceTokenIfAuthenticated()
+            onNavigateToHome()
+        } else {
+            onNavigateToAuth()
         }
     }
     

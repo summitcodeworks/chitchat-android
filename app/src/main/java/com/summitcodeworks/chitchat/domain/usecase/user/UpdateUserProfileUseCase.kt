@@ -2,7 +2,7 @@ package com.summitcodeworks.chitchat.domain.usecase.user
 
 import android.content.Context
 import android.net.Uri
-import com.summitcodeworks.chitchat.data.auth.FirebaseAuthManager
+import com.summitcodeworks.chitchat.data.auth.OtpAuthManager
 import com.summitcodeworks.chitchat.data.repository.AuthRepository
 import com.summitcodeworks.chitchat.domain.model.User
 import com.summitcodeworks.chitchat.domain.usecase.media.UploadMediaUseCase
@@ -14,7 +14,7 @@ import javax.inject.Inject
 class UpdateUserProfileUseCase @Inject constructor(
     private val authRepository: AuthRepository,
     private val uploadMediaUseCase: UploadMediaUseCase,
-    private val firebaseAuthManager: FirebaseAuthManager,
+    private val otpAuthManager: OtpAuthManager,
     @ApplicationContext private val context: Context
 ) {
     suspend operator fun invoke(
@@ -27,7 +27,7 @@ class UpdateUserProfileUseCase @Inject constructor(
 
             if (avatarUri != null) {
                 val avatarFile = createFileFromUri(avatarUri)
-                val token = firebaseAuthManager.getValidToken() ?: return Result.failure(Exception("User not authenticated"))
+                val token = otpAuthManager.getCurrentToken() ?: return Result.failure(Exception("User not authenticated"))
                 val uploadResult = uploadMediaUseCase(
                     token = token,
                     file = avatarFile,

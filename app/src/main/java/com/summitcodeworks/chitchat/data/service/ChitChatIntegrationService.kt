@@ -31,28 +31,13 @@ class ChitChatIntegrationService @Inject constructor(
 ) {
     
     // Authentication
-    suspend fun signInWithPhone(phoneNumber: String, verificationId: String, code: String): Result<String> {
+    suspend fun signInWithPhone(phoneNumber: String, otp: String): Result<String> {
         return withRetry(errorHandler) {
-            val firebaseUserResult = authRepository.signInWithPhoneNumber(phoneNumber, verificationId, code)
-            
-            firebaseUserResult.fold(
-                onSuccess = { firebaseUser ->
-                    val idTokenResult = firebaseUser.getIdToken(false)
-                    val idToken = idTokenResult.result
-                    
-                    val authResult = authRepository.authenticateWithBackend(
-                        name = firebaseUser.displayName,
-                        deviceInfo = "Android"
-                    )
-                    
-                    authResult.fold(
-                        onSuccess = { authResponse ->
-                            authResponse.token
-                        },
-                        onFailure = { exception ->
-                            throw exception
-                        }
-                    )
+            val authResult = authRepository.verifyOtpSms(phoneNumber, otp)
+
+            authResult.fold(
+                onSuccess = { authResponse ->
+                    authResponse.accessToken
                 },
                 onFailure = { exception ->
                     throw exception
@@ -61,9 +46,11 @@ class ChitChatIntegrationService @Inject constructor(
         }
     }
     
-    suspend fun verifyOtp(verificationId: String, otp: String): Result<String> {
-        // This method is not available in AuthRepository, simplified for now
-        return Result.failure(Exception("Method not implemented"))
+    suspend fun sendOtp(phoneNumber: String): Result<Unit> {
+        return withRetry(errorHandler) {
+            val result = authRepository.sendOtpSms(phoneNumber)
+            result.getOrThrow()
+        }
     }
     
     suspend fun signOut(): Result<Unit> {

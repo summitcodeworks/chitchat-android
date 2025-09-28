@@ -1,6 +1,5 @@
 package com.summitcodeworks.chitchat.data.repository
 
-// Firebase imports removed - using OTP authentication instead
 import com.summitcodeworks.chitchat.data.auth.OtpAuthManager
 import com.summitcodeworks.chitchat.data.local.dao.UserDao
 import com.summitcodeworks.chitchat.data.local.entity.UserEntity
@@ -9,25 +8,75 @@ import com.summitcodeworks.chitchat.data.remote.api.UserApiService
 import com.summitcodeworks.chitchat.data.remote.dto.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * OTP Authentication Repository
+ * 
+ * Handles SMS-based OTP authentication as the primary authentication method
+ * for the ChitChat application.
+ */
 @Singleton
-class AuthRepository @Inject constructor(
+class OtpAuthRepository @Inject constructor(
     private val userApiService: UserApiService,
     private val userDao: UserDao,
-    private val userMapper: UserMapper,
-    private val otpAuthManager: OtpAuthManager
+    private val otpAuthManager: OtpAuthManager,
+    private val userMapper: UserMapper
 ) {
 
-    // Firebase authentication methods removed - using OTP authentication instead
-    
+    /**
+     * Sends OTP to the specified phone number
+     */
+    suspend fun sendOtp(phoneNumber: String): Result<Unit> {
+        return try {
+            val request = SendOtpRequest(phoneNumber = phoneNumber)
+            val response = userApiService.sendOtp(request)
+            
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(Unit)
+            } else {
+                val errorMessage = response.body()?.message ?: "Failed to send OTP"
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Verifies OTP and authenticates the user
+     */
+    suspend fun verifyOtp(phoneNumber: String, otp: String): Result<OtpAuthResponse> {
+        return try {
+            val request = VerifyOtpSmsRequest(phoneNumber = phoneNumber, otp = otp)
+            val response = userApiService.verifyOtp(request)
+            
+            if (response.isSuccessful && response.body()?.success == true) {
+                val authResponse = response.body()?.data
+                if (authResponse != null) {
+                    // Save user to local database
+                    val userEntity = userMapper.dtoToEntity(authResponse.user)
+                    userDao.insertUser(userEntity)
+                    
+                    Result.success(authResponse)
+                } else {
+                    Result.failure(Exception("Invalid response data"))
+                }
+            } else {
+                val errorMessage = response.body()?.message ?: "OTP verification failed"
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Gets the current user profile
+     */
     suspend fun getUserProfile(): Result<UserDto> {
         return try {
-            // Token is automatically added by OtpAuthInterceptor
             val response = userApiService.getUserProfile()
 
             if (response.isSuccessful && response.body()?.success == true) {
@@ -49,7 +98,10 @@ class AuthRepository @Inject constructor(
             Result.failure(e)
         }
     }
-    
+
+    /**
+     * Updates the user profile
+     */
     suspend fun updateUserProfile(name: String, avatarUrl: String? = null, about: String? = null): Result<UserDto> {
         return try {
             val request = UpdateProfileRequest(
@@ -58,7 +110,6 @@ class AuthRepository @Inject constructor(
                 about = about
             )
 
-            // Token is automatically added by OtpAuthInterceptor
             val response = userApiService.updateUserProfile(request)
             
             if (response.isSuccessful && response.body()?.success == true) {
@@ -80,11 +131,13 @@ class AuthRepository @Inject constructor(
             Result.failure(e)
         }
     }
-    
+
+    /**
+     * Syncs contacts with the server
+     */
     suspend fun syncContacts(contacts: List<ContactDto>): Result<List<UserDto>> {
         return try {
             val request = ContactSyncRequest(contacts = contacts)
-            // Token is automatically added by OtpAuthInterceptor
             val response = userApiService.syncContacts(request)
             
             if (response.isSuccessful && response.body()?.success == true) {
@@ -106,10 +159,12 @@ class AuthRepository @Inject constructor(
             Result.failure(e)
         }
     }
-    
+
+    /**
+     * Blocks a user
+     */
     suspend fun blockUser(userId: Long): Result<Unit> {
         return try {
-            // Token is automatically added by OtpAuthInterceptor
             val response = userApiService.blockUser(userId)
             
             if (response.isSuccessful && response.body()?.success == true) {
@@ -124,10 +179,12 @@ class AuthRepository @Inject constructor(
             Result.failure(e)
         }
     }
-    
+
+    /**
+     * Unblocks a user
+     */
     suspend fun unblockUser(userId: Long): Result<Unit> {
         return try {
-            // Token is automatically added by OtpAuthInterceptor
             val response = userApiService.unblockUser(userId)
             
             if (response.isSuccessful && response.body()?.success == true) {
@@ -142,14 +199,15 @@ class AuthRepository @Inject constructor(
             Result.failure(e)
         }
     }
-    
+
+    /**
+     * Updates online status
+     */
     suspend fun updateOnlineStatus(isOnline: Boolean): Result<Unit> {
         return try {
-            // Token is automatically added by OtpAuthInterceptor
             val response = userApiService.updateOnlineStatus(isOnline)
             
             if (response.isSuccessful && response.body()?.success == true) {
-                // Update local database if needed
                 Result.success(Unit)
             } else {
                 val errorMessage = response.body()?.message ?: "Failed to update status"
@@ -159,24 +217,43 @@ class AuthRepository @Inject constructor(
             Result.failure(e)
         }
     }
-    
-    fun getCurrentUser(): UserDto? {
-        return otpAuthManager.getCurrentUser()
-    }
 
-    fun getCurrentUserId(): Long? {
-        return otpAuthManager.getCurrentUserId()
-    }
+    /**
+     * Gets the current user from OTP auth manager
+     */
+    fun getCurrentUser(): UserDto? = otpAuthManager.getCurrentUser()
 
-    suspend fun getCurrentUserToken(): String? {
-        return otpAuthManager.getCurrentToken()
-    }
+    /**
+     * Gets the current user ID
+     */
+    fun getCurrentUserId(): Long? = otpAuthManager.getCurrentUserId()
 
+    /**
+     * Gets the current user's phone number
+     */
+    fun getCurrentUserPhone(): String? = otpAuthManager.getCurrentUserPhone()
+
+    /**
+     * Gets the current access token
+     */
+    fun getCurrentToken(): String? = otpAuthManager.getCurrentToken()
+
+    /**
+     * Checks if the user is authenticated
+     */
+    fun isUserAuthenticated(): Boolean = otpAuthManager.isUserAuthenticated()
+
+    /**
+     * Signs out the current user
+     */
     suspend fun signOut() {
         otpAuthManager.signOut()
         userDao.deleteAllUsers()
     }
 
+    /**
+     * Observes the current user
+     */
     fun observeCurrentUser(): Flow<UserEntity?> {
         val currentUserId = getCurrentUserId()
         return if (currentUserId != null) {
@@ -189,75 +266,8 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    /**
+     * Observes authentication state
+     */
     fun observeAuthState(): Flow<Boolean> = otpAuthManager.isAuthenticated
-    
-    // OTP-based Authentication Methods (Primary)
-    suspend fun sendOtpSms(phoneNumber: String): Result<Unit> {
-        return try {
-            val request = SendOtpRequest(phoneNumber = phoneNumber)
-            val response = userApiService.sendOtp(request)
-            
-            if (response.isSuccessful && response.body()?.success == true) {
-                Result.success(Unit)
-            } else {
-                val errorMessage = response.body()?.message ?: "Failed to send OTP"
-                Result.failure(Exception(errorMessage))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-    
-    suspend fun verifyOtpSms(phoneNumber: String, otp: String): Result<OtpAuthResponse> {
-        return try {
-            val request = VerifyOtpSmsRequest(phoneNumber = phoneNumber, otp = otp)
-            val response = userApiService.verifyOtp(request)
-            
-            if (response.isSuccessful && response.body()?.success == true) {
-                val authResponse = response.body()?.data
-                if (authResponse != null) {
-                    // Set authentication data in OtpAuthManager
-                    otpAuthManager.setAuthData(authResponse)
-                    
-                    // Save user to local database
-                    val userEntity = userMapper.dtoToEntity(authResponse.user)
-                    userDao.insertUser(userEntity)
-                    
-                    Result.success(authResponse)
-                } else {
-                    Result.failure(Exception("Invalid response data"))
-                }
-            } else {
-                val errorMessage = response.body()?.message ?: "OTP verification failed"
-                Result.failure(Exception(errorMessage))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun updateDeviceToken(token: String, request: DeviceTokenUpdateRequest): Result<UserDto> {
-        return try {
-            // Token is automatically added by OtpAuthInterceptor, but we can override with specific token if needed
-            val response = userApiService.updateDeviceToken(request)
-
-            if (response.isSuccessful && response.body()?.success == true) {
-                val userDto = response.body()?.data
-                if (userDto != null) {
-                    // Update local database
-                    val userEntity = userMapper.dtoToEntity(userDto)
-                    userDao.insertUser(userEntity)
-
-                    Result.success(userDto)
-                } else {
-                    Result.failure(Exception("Invalid response data"))
-                }
-            } else {
-                val errorMessage = response.body()?.message ?: "Failed to update device token"
-                Result.failure(Exception(errorMessage))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
 }

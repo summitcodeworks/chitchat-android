@@ -117,15 +117,22 @@ class NetworkMonitorInterceptor @Inject constructor(
 
             networkLogDao.insertLog(updatedLog)
         } else if (exception != null) {
+            // Create error log without looking up original log
             val errorLog = NetworkLog(
                 requestId = requestId,
                 type = NetworkType.HTTP,
-                method = "",
-                url = "",
+                method = "UNKNOWN",
+                url = "UNKNOWN",
+                requestHeaders = null,
+                requestBody = null,
                 requestTime = requestTime,
                 responseTime = responseTime,
                 duration = duration,
-                error = exception.message
+                requestSize = 0,
+                isSSL = false,
+                protocol = "HTTP/1.1",
+                curlCommand = null,
+                error = "Exception: ${exception.javaClass.simpleName} - ${exception.message}\nStack trace: ${exception.stackTraceToString()}"
             )
 
             networkLogDao.insertLog(errorLog)
@@ -138,10 +145,20 @@ class NetworkMonitorInterceptor @Inject constructor(
 
     private fun getRequestBody(request: Request): String? {
         return try {
-            val copy = request.newBuilder().build()
-            val buffer = Buffer()
-            copy.body?.writeTo(buffer)
-            buffer.readUtf8()
+            val body = request.body
+            if (body == null) {
+                return null
+            }
+            
+            val contentType = body.contentType()?.toString()
+            if (isPlainText(contentType)) {
+                val buffer = Buffer()
+                body.writeTo(buffer)
+                buffer.readUtf8()
+            } else {
+                val contentLength = body.contentLength()
+                "[Binary Request Body - ${contentType ?: "unknown"} (${contentLength} bytes)]"
+            }
         } catch (e: Exception) {
             "Failed to read request body: ${e.message}"
         }
@@ -149,14 +166,26 @@ class NetworkMonitorInterceptor @Inject constructor(
 
     private fun getResponseBody(response: Response): String? {
         return try {
-            if (isPlainText(response.headers["Content-Type"])) {
+            val contentType = response.headers["Content-Type"]
+            if (isPlainText(contentType)) {
                 val source = response.body?.source()
                 source?.let {
                     val buffer = it.buffer
-                    buffer.clone().readUtf8()
+                    // Clone the buffer to avoid consuming the original
+                    val clonedBuffer = buffer.clone()
+                    clonedBuffer.readUtf8()
+                }
+            } else if (contentType?.contains("json") == true) {
+                // Handle JSON content even if not explicitly text/*
+                val source = response.body?.source()
+                source?.let {
+                    val buffer = it.buffer
+                    val clonedBuffer = buffer.clone()
+                    clonedBuffer.readUtf8()
                 }
             } else {
-                "[Binary Content - ${response.headers["Content-Type"]}]"
+                val contentLength = response.body?.contentLength() ?: 0
+                "[Binary Content - ${contentType ?: "unknown"} (${contentLength} bytes)]"
             }
         } catch (e: Exception) {
             "Failed to read response body: ${e.message}"
@@ -183,11 +212,18 @@ class NetworkMonitorInterceptor @Inject constructor(
 
     private fun isPlainText(contentType: String?): Boolean {
         if (contentType == null) return false
-        return contentType.startsWith("text/") ||
-                contentType.contains("json") ||
-                contentType.contains("xml") ||
-                contentType.contains("html") ||
-                contentType.contains("plain")
+        val lowerContentType = contentType.lowercase()
+        return lowerContentType.startsWith("text/") ||
+                lowerContentType.contains("json") ||
+                lowerContentType.contains("xml") ||
+                lowerContentType.contains("html") ||
+                lowerContentType.contains("plain") ||
+                lowerContentType.contains("javascript") ||
+                lowerContentType.contains("css") ||
+                lowerContentType.contains("csv") ||
+                lowerContentType.contains("form-urlencoded") ||
+                lowerContentType.contains("multipart") ||
+                lowerContentType.contains("application/x-www-form-urlencoded")
     }
 
     private fun generateCurlCommand(request: Request, requestBody: String?): String {

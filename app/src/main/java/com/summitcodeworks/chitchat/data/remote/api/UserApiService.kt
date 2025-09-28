@@ -6,6 +6,18 @@ import retrofit2.http.*
 
 interface UserApiService {
     
+    // SMS-based OTP Authentication (Primary Method)
+    @POST("api/users/send-otp")
+    suspend fun sendOtp(
+        @Body request: SendOtpRequest
+    ): Response<ApiResponse<Unit>>
+    
+    @POST("api/users/verify-otp")
+    suspend fun verifyOtp(
+        @Body request: VerifyOtpSmsRequest
+    ): Response<ApiResponse<OtpAuthResponse>>
+    
+    // Firebase Authentication (Legacy)
     @POST("api/users/authenticate")
     suspend fun authenticateWithFirebase(
         @Body request: FirebaseAuthRequest
@@ -58,4 +70,9 @@ interface UserApiService {
         @Query("size") size: Int = 20,
         @Query("sort") sort: String = "createdAt,desc"
     ): Response<ApiResponse<UserPageResponse>>
+
+    @PUT("api/users/device-token")
+    suspend fun updateDeviceToken(
+        @Body request: DeviceTokenUpdateRequest
+    ): Response<ApiResponse<UserDto>>
 }

@@ -1,11 +1,13 @@
 package com.summitcodeworks.chitchat.data.remote
 
+import android.content.Context
+// import com.chuckerteam.chucker.api.ChuckerInterceptor
 import com.summitcodeworks.chitchat.data.config.EnvironmentManager
 import com.summitcodeworks.chitchat.data.remote.api.*
-import com.summitcodeworks.chitchat.data.remote.interceptor.FirebaseAuthInterceptor
+import com.summitcodeworks.chitchat.data.remote.interceptor.OtpAuthInterceptor
 import com.summitcodeworks.chitchat.data.remote.interceptor.ErrorResponseInterceptor
 import com.summitcodeworks.networkmonitor.interceptor.NetworkMonitorInterceptor
-import com.chuckerteam.chucker.ChuckerInterceptor
+import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -17,9 +19,9 @@ import javax.inject.Singleton
 class ApiServiceFactory @Inject constructor(
     private val environmentManager: EnvironmentManager,
     private val networkMonitorInterceptor: NetworkMonitorInterceptor,
-    private val firebaseAuthInterceptor: FirebaseAuthInterceptor,
+    private val otpAuthInterceptor: OtpAuthInterceptor,
     private val errorResponseInterceptor: ErrorResponseInterceptor,
-    private val chuckerInterceptor: ChuckerInterceptor
+    @ApplicationContext private val context: Context
 ) {
     private var currentBaseUrl: String? = null
     private var retrofit: Retrofit? = null
@@ -39,10 +41,9 @@ class ApiServiceFactory @Inject constructor(
             currentBaseUrl = currentUrl
 
             val okHttpClient = OkHttpClient.Builder()
-                .addInterceptor(firebaseAuthInterceptor)
+                .addInterceptor(otpAuthInterceptor)
                 .addInterceptor(errorResponseInterceptor)
                 .addInterceptor(networkMonitorInterceptor)
-                .addInterceptor(chuckerInterceptor)
                 .addInterceptor(HttpLoggingInterceptor().apply {
                     level = HttpLoggingInterceptor.Level.BODY
                 })
@@ -76,18 +77,18 @@ class ApiServiceFactory @Inject constructor(
         currentBaseUrl = null
     }
 
-    // These methods are now handled automatically by FirebaseAuthInterceptor
+    // These methods are now handled automatically by OtpAuthInterceptor
     // but kept for backward compatibility if needed elsewhere
-    @Deprecated("Token management is now handled automatically by FirebaseAuthInterceptor")
+    @Deprecated("Token management is now handled automatically by OtpAuthInterceptor")
     fun setAuthToken(token: String?) {
-        // No-op: Firebase tokens are managed automatically
+        // No-op: OTP tokens are managed automatically
     }
 
-    @Deprecated("Token management is now handled automatically by FirebaseAuthInterceptor")
+    @Deprecated("Token management is now handled automatically by OtpAuthInterceptor")
     fun clearAuthToken() {
-        // No-op: Firebase tokens are managed automatically
+        // No-op: OTP tokens are managed automatically
     }
 
-    @Deprecated("Use FirebaseAuthManager.getCurrentToken() instead")
+    @Deprecated("Use OtpAuthManager.getCurrentToken() instead")
     fun getAuthToken(): String? = null
 }

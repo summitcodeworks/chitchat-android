@@ -10,6 +10,11 @@
             android:name=".ui.NetworkMonitorActivity"
             android:exported="false"
             android:label="Network Monitor" />
+            
+        <service
+            android:name=".notification.NetworkMonitorNotificationService"
+            android:exported="false"
+            android:enabled="true" />
     </application>
 
 </manifest>

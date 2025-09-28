@@ -1,6 +1,6 @@
 package com.summitcodeworks.chitchat.di
 
-import com.summitcodeworks.chitchat.data.repository.AuthRepository
+import com.summitcodeworks.chitchat.data.repository.OtpAuthRepository
 import com.summitcodeworks.chitchat.data.repository.MessageRepository
 import com.summitcodeworks.chitchat.data.repository.CallRepository
 import dagger.Module
@@ -15,14 +15,13 @@ object RepositoryModule {
     
     @Provides
     @Singleton
-    fun provideAuthRepository(
+    fun provideOtpAuthRepository(
         userApiService: com.summitcodeworks.chitchat.data.remote.api.UserApiService,
         userDao: com.summitcodeworks.chitchat.data.local.dao.UserDao,
-        firebaseAuth: com.google.firebase.auth.FirebaseAuth,
-        firebaseAuthManager: com.summitcodeworks.chitchat.data.auth.FirebaseAuthManager,
-        userMapper: com.summitcodeworks.chitchat.data.mapper.UserMapper
-    ): AuthRepository {
-        return AuthRepository(userApiService, userDao, firebaseAuth, firebaseAuthManager, userMapper)
+        userMapper: com.summitcodeworks.chitchat.data.mapper.UserMapper,
+        otpAuthManager: com.summitcodeworks.chitchat.data.auth.OtpAuthManager
+    ): OtpAuthRepository {
+        return OtpAuthRepository(userApiService, userDao, otpAuthManager, userMapper)
     }
     
     @Provides

@@ -11,7 +11,7 @@ import com.summitcodeworks.chitchat.domain.model.User
 import com.summitcodeworks.chitchat.domain.usecase.auth.SendOtpUseCase
 import com.summitcodeworks.chitchat.domain.usecase.auth.SignInWithPhoneUseCase
 import com.summitcodeworks.chitchat.presentation.state.AuthState
-import com.summitcodeworks.chitchat.data.auth.AuthTokenManager
+import com.summitcodeworks.chitchat.data.auth.OtpAuthManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +23,7 @@ import javax.inject.Inject
 class AuthViewModel @Inject constructor(
     private val sendOtpUseCase: SendOtpUseCase,
     private val signInWithPhoneUseCase: SignInWithPhoneUseCase,
-    private val authTokenManager: AuthTokenManager
+    private val otpAuthManager: OtpAuthManager
 ) : ViewModel() {
     
     private val _authState = MutableStateFlow(AuthState())
@@ -42,7 +42,7 @@ class AuthViewModel @Inject constructor(
 
     private fun observeTokenManager() {
         viewModelScope.launch {
-            authTokenManager.currentToken.collect { token ->
+            otpAuthManager.currentToken.collect { token ->
                 _authState.value = _authState.value.copy(
                     token = token,
                     isAuthenticated = token != null
@@ -56,13 +56,13 @@ class AuthViewModel @Inject constructor(
             _authState.value = _authState.value.copy(isLoading = true)
 
             try {
-                // Check if user is already signed in with Firebase
+                // Check if user is already signed in with Firebase AND has completed OTP verification
                 val firebaseUser = signInWithPhoneUseCase.getCurrentFirebaseUser()
                 if (firebaseUser != null) {
-                    // User is authenticated with Firebase
+                    // User is authenticated with Firebase, but we need to ensure OTP was completed
+                    // For now, we'll require fresh OTP verification for security
                     _authState.value = _authState.value.copy(
-                        isAuthenticated = true,
-                        token = "authenticated", // We can get actual token later if needed
+                        isAuthenticated = false, // Force OTP verification
                         isLoading = false
                     )
                 } else {
@@ -132,7 +132,7 @@ class AuthViewModel @Inject constructor(
             signInWithPhoneUseCase(phoneNumber, verificationId, code)
                 .fold(
                     onSuccess = { token ->
-                        authTokenManager.setToken(token)
+                        // Token is automatically managed by OtpAuthManager
                         _authState.value = _authState.value.copy(
                             isLoading = false,
                             isAuthenticated = true,
@@ -172,7 +172,7 @@ class AuthViewModel @Inject constructor(
     fun signOut() {
         viewModelScope.launch {
             signInWithPhoneUseCase.signOut()
-            authTokenManager.clearToken()
+            otpAuthManager.signOut()
             _authState.value = AuthState() // Reset to default state
             _currentUser.value = null
         }

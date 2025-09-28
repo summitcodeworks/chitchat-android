@@ -21,7 +21,8 @@ import com.summitcodeworks.chitchat.domain.model.Message
 import com.summitcodeworks.chitchat.domain.model.MessageType
 import com.summitcodeworks.chitchat.presentation.state.ChatState
 import com.summitcodeworks.chitchat.presentation.viewmodel.ChatViewModel
-import com.summitcodeworks.chitchat.presentation.viewmodel.AuthViewModel
+// AuthViewModel removed - using OTP authentication
+import com.summitcodeworks.chitchat.data.auth.OtpAuthManager
 import com.summitcodeworks.chitchat.presentation.components.MessageBubble
 import com.summitcodeworks.chitchat.presentation.components.TypingIndicator
 import com.summitcodeworks.chitchat.presentation.components.MediaPickerBottomSheet
@@ -32,14 +33,14 @@ fun ChatScreen(
     userId: Long,
     onNavigateBack: () -> Unit,
     chatViewModel: ChatViewModel = hiltViewModel(),
-    authViewModel: AuthViewModel = hiltViewModel()
+    otpAuthManager: OtpAuthManager = hiltViewModel<com.summitcodeworks.chitchat.presentation.viewmodel.HomeScreenAuthViewModel>().otpAuthManager
 ) {
     var messageText by remember { mutableStateOf("") }
     var showMediaPicker by remember { mutableStateOf(false) }
     var isTyping by remember { mutableStateOf(false) }
     val chatState by chatViewModel.chatState.collectAsState()
-    val authState by authViewModel.authState.collectAsState()
     val listState = rememberLazyListState()
+    val currentToken by otpAuthManager.currentToken.collectAsState()
     
     LaunchedEffect(chatState.messages) {
         if (chatState.messages.isNotEmpty()) {
@@ -155,9 +156,9 @@ fun ChatScreen(
                 
                 FloatingActionButton(
                     onClick = {
-                        if (messageText.isNotBlank() && authState.token != null) {
+                        if (messageText.isNotBlank() && currentToken != null) {
                             chatViewModel.sendMessage(
-                                token = authState.token!!,
+                                token = currentToken!!,
                                 receiverId = userId,
                                 content = messageText,
                                 messageType = MessageType.TEXT

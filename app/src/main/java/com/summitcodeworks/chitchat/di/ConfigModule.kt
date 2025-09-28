@@ -1,7 +1,7 @@
 package com.summitcodeworks.chitchat.di
 
 import android.content.Context
-import com.summitcodeworks.chitchat.data.firebase.FirebaseTokenManager
+import com.summitcodeworks.chitchat.data.config.EnvironmentManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -11,13 +11,13 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object FirebaseModule {
-
+object ConfigModule {
+    
     @Provides
     @Singleton
-    fun provideFirebaseTokenManager(
+    fun provideEnvironmentManager(
         @ApplicationContext context: Context
-    ): FirebaseTokenManager {
-        return FirebaseTokenManager(context)
+    ): EnvironmentManager {
+        return EnvironmentManager(context)
     }
 }

@@ -1,7 +1,7 @@
 package com.summitcodeworks.chitchat.data.remote.websocket
 
 import com.google.gson.Gson
-import com.summitcodeworks.chitchat.data.auth.FirebaseAuthManager
+import com.summitcodeworks.chitchat.data.auth.OtpAuthManager
 import com.summitcodeworks.chitchat.data.config.EnvironmentManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -14,7 +14,7 @@ import javax.inject.Singleton
 class ChitChatWebSocketClient @Inject constructor(
     private val gson: Gson,
     private val environmentManager: EnvironmentManager,
-    private val firebaseAuthManager: FirebaseAuthManager
+    private val otpAuthManager: OtpAuthManager
 ) {
     private var webSocket: WebSocket? = null
     private val client = OkHttpClient.Builder()
@@ -59,16 +59,16 @@ class ChitChatWebSocketClient @Inject constructor(
         _connectionState.value = ConnectionState.CONNECTING
 
         try {
-            // Get Firebase ID token automatically
-            val firebaseToken = firebaseAuthManager.getValidToken()
-            if (firebaseToken == null) {
+            // Get OTP token automatically
+            val otpToken = otpAuthManager.getCurrentToken()
+            if (otpToken == null) {
                 _connectionState.value = ConnectionState.DISCONNECTED
                 return
             }
 
             // Create WebSocket URL with token as query parameter (as per API docs)
             val baseUrl = environmentManager.getCurrentWebSocketBaseUrl()
-            val webSocketUrl = "${baseUrl}ws/$endpoint?token=$firebaseToken"
+            val webSocketUrl = "${baseUrl}ws/$endpoint?token=$otpToken"
 
             val request = Request.Builder()
                 .url(webSocketUrl)

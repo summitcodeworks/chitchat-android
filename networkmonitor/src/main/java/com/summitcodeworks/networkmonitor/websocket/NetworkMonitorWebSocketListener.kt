@@ -32,11 +32,16 @@ class NetworkMonitorWebSocketListener @Inject constructor(
         url = response.request.url.toString()
 
         scope.launch {
-            // Log the initial WebSocket connection
+            // Log the initial WebSocket connection with detailed headers
+            val requestHeaders = response.request.headers.toMultimap().toString()
+            val responseHeaders = response.headers.toMultimap().toString()
+            
             val networkLog = NetworkLog(
                 requestId = connectionId,
                 type = NetworkType.WEBSOCKET,
                 url = url,
+                requestHeaders = requestHeaders,
+                responseHeaders = responseHeaders,
                 requestTime = connectionStartTime,
                 responseCode = response.code,
                 protocol = response.protocol.toString(),
@@ -49,6 +54,7 @@ class NetworkMonitorWebSocketListener @Inject constructor(
                 connectionId = connectionId,
                 url = url,
                 eventType = WebSocketEventType.OPEN,
+                message = "WebSocket connection established with code: ${response.code}",
                 timestamp = connectionStartTime
             )
             webSocketEventDao.insertEvent(event)
@@ -59,12 +65,15 @@ class NetworkMonitorWebSocketListener @Inject constructor(
 
     override fun onMessage(webSocket: WebSocket, text: String) {
         scope.launch {
+            val timestamp = System.currentTimeMillis()
+            val messageDetails = "Text message (${text.length} chars): $text"
+            
             val event = WebSocketEvent(
                 connectionId = connectionId,
                 url = url,
                 eventType = WebSocketEventType.MESSAGE_RECEIVED,
-                message = text,
-                timestamp = System.currentTimeMillis()
+                message = messageDetails,
+                timestamp = timestamp
             )
             webSocketEventDao.insertEvent(event)
         }
@@ -74,12 +83,20 @@ class NetworkMonitorWebSocketListener @Inject constructor(
 
     override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
         scope.launch {
+            val timestamp = System.currentTimeMillis()
+            val hexPreview = if (bytes.size <= 100) {
+                bytes.hex()
+            } else {
+                bytes.substring(0, 50).hex() + "... (truncated)"
+            }
+            val messageDetails = "Binary message (${bytes.size} bytes): $hexPreview"
+            
             val event = WebSocketEvent(
                 connectionId = connectionId,
                 url = url,
                 eventType = WebSocketEventType.MESSAGE_RECEIVED,
-                message = "[Binary message: ${bytes.size} bytes]",
-                timestamp = System.currentTimeMillis()
+                message = messageDetails,
+                timestamp = timestamp
             )
             webSocketEventDao.insertEvent(event)
         }
@@ -145,12 +162,15 @@ class NetworkMonitorWebSocketListener @Inject constructor(
 
     fun logSentMessage(message: String) {
         scope.launch {
+            val timestamp = System.currentTimeMillis()
+            val messageDetails = "Text message sent (${message.length} chars): $message"
+            
             val event = WebSocketEvent(
                 connectionId = connectionId,
                 url = url,
                 eventType = WebSocketEventType.MESSAGE_SENT,
-                message = message,
-                timestamp = System.currentTimeMillis()
+                message = messageDetails,
+                timestamp = timestamp
             )
             webSocketEventDao.insertEvent(event)
         }
@@ -158,12 +178,20 @@ class NetworkMonitorWebSocketListener @Inject constructor(
 
     fun logSentMessage(bytes: ByteString) {
         scope.launch {
+            val timestamp = System.currentTimeMillis()
+            val hexPreview = if (bytes.size <= 100) {
+                bytes.hex()
+            } else {
+                bytes.substring(0, 50).hex() + "... (truncated)"
+            }
+            val messageDetails = "Binary message sent (${bytes.size} bytes): $hexPreview"
+            
             val event = WebSocketEvent(
                 connectionId = connectionId,
                 url = url,
                 eventType = WebSocketEventType.MESSAGE_SENT,
-                message = "[Binary message: ${bytes.size} bytes]",
-                timestamp = System.currentTimeMillis()
+                message = messageDetails,
+                timestamp = timestamp
             )
             webSocketEventDao.insertEvent(event)
         }
