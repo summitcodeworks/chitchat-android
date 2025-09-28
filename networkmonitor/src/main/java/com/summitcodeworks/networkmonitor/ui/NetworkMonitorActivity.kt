@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.summitcodeworks.networkmonitor.model.NetworkLog
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -26,19 +28,77 @@ class NetworkMonitorActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Scaffold(
-                        modifier = Modifier.fillMaxSize()
-                    ) { paddingValues ->
-                        Box(modifier = Modifier.padding(paddingValues)) {
-                            NetworkMonitorScreen(
-                                onNavigateToDetails = { logId ->
-                                    // TODO: Navigate to details screen
-                                }
-                            )
-                        }
-                    }
+                    NetworkMonitorNavigation()
                 }
             }
         }
     }
+}
+
+@Composable
+private fun NetworkMonitorNavigation() {
+    var currentScreen by remember { mutableStateOf(NetworkMonitorScreenType.MAIN) }
+    var selectedLogId by remember { mutableStateOf<Long?>(null) }
+    var selectedLog by remember { mutableStateOf<NetworkLog?>(null) }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize()
+    ) { paddingValues ->
+        Box(modifier = Modifier.padding(paddingValues)) {
+            when (currentScreen) {
+                NetworkMonitorScreenType.MAIN -> {
+                    NetworkMonitorScreen(
+                        onNavigateToDetails = { logId ->
+                            selectedLogId = logId
+                            currentScreen = NetworkMonitorScreenType.DETAILS
+                        },
+                        onNavigateToEditor = { log ->
+                            selectedLog = log
+                            currentScreen = NetworkMonitorScreenType.EDITOR
+                        }
+                    )
+                }
+                
+                NetworkMonitorScreenType.DETAILS -> {
+                    selectedLogId?.let { logId ->
+                        NetworkLogDetailsScreen(
+                            logId = logId,
+                            onNavigateBack = {
+                                currentScreen = NetworkMonitorScreenType.MAIN
+                                selectedLogId = null
+                            },
+                            onNavigateToEditor = { log ->
+                                selectedLog = log
+                                currentScreen = NetworkMonitorScreenType.EDITOR
+                            }
+                        )
+                    }
+                }
+                
+                NetworkMonitorScreenType.EDITOR -> {
+                    RequestEditorScreen(
+                        originalLog = selectedLog,
+                        onNavigateBack = {
+                            currentScreen = if (selectedLogId != null) {
+                                NetworkMonitorScreenType.DETAILS
+                            } else {
+                                NetworkMonitorScreenType.MAIN
+                            }
+                            selectedLog = null
+                        },
+                        onRequestSent = { newLog ->
+                            // Request was sent, navigate back to main screen
+                            currentScreen = NetworkMonitorScreenType.MAIN
+                            selectedLog = null
+                            selectedLogId = null
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+private enum class NetworkMonitorScreenType {
+    MAIN, DETAILS, EDITOR
 }

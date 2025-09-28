@@ -1,10 +1,14 @@
 package com.summitcodeworks.networkmonitor.ui
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -13,19 +17,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.summitcodeworks.networkmonitor.model.NetworkLog
 import com.summitcodeworks.networkmonitor.model.NetworkType
 import com.summitcodeworks.networkmonitor.model.WebSocketEvent
 import com.summitcodeworks.networkmonitor.model.WebSocketEventType
+import com.summitcodeworks.networkmonitor.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -33,6 +41,7 @@ import java.util.*
 @Composable
 fun NetworkMonitorScreen(
     onNavigateToDetails: (Long) -> Unit = {},
+    onNavigateToEditor: (NetworkLog?) -> Unit = {},
     viewModel: NetworkMonitorViewModel = hiltViewModel()
 ) {
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
@@ -41,20 +50,90 @@ fun NetworkMonitorScreen(
     val networkSummary by viewModel.networkSummary.collectAsStateWithLifecycle()
 
     var showClearDialog by remember { mutableStateOf(false) }
+    var showFilterDialog by remember { mutableStateOf(false) }
+    var showAnalyticsDialog by remember { mutableStateOf(false) }
+    var currentFilter by remember { mutableStateOf(NetworkFilter()) }
+    
+    // Snackbar state
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    
+    val pagerState = rememberPagerState(
+        initialPage = selectedTab.ordinal,
+        pageCount = { NetworkMonitorTab.values().size }
+    )
+    
+    // Sync pager state with selected tab
+    LaunchedEffect(selectedTab) {
+        pagerState.animateScrollToPage(selectedTab.ordinal)
+    }
+    
+    // Sync selected tab with pager state
+    LaunchedEffect(pagerState.currentPage) {
+        val newTab = NetworkMonitorTab.values()[pagerState.currentPage]
+        if (newTab != selectedTab) {
+            viewModel.selectTab(newTab)
+        }
+    }
+    
+    // Handle snackbar actions
+    LaunchedEffect(snackbarHostState.currentSnackbarData) {
+        snackbarHostState.currentSnackbarData?.let { snackbarData ->
+            when (snackbarData.visuals.actionLabel) {
+                "Clear" -> {
+                    viewModel.clearAllLogs()
+                    snackbarHostState.currentSnackbarData?.dismiss()
+                }
+                "View" -> {
+                    // Handle view action for export
+                    snackbarHostState.currentSnackbarData?.dismiss()
+                }
+            }
+        }
+    }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
         // Top App Bar
         TopAppBar(
             title = { Text("Network Monitor") },
             actions = {
-                IconButton(onClick = { showClearDialog = true }) {
+                IconButton(onClick = { onNavigateToEditor(null) }) {
+                    Icon(Icons.Default.Add, contentDescription = "New Request")
+                }
+                IconButton(onClick = { showFilterDialog = true }) {
+                    Icon(Icons.Default.FilterList, contentDescription = "Filter")
+                }
+                IconButton(onClick = { showAnalyticsDialog = true }) {
+                    Icon(Icons.Default.Analytics, contentDescription = "Analytics")
+                }
+                IconButton(onClick = { 
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Clear all network logs?",
+                            actionLabel = "Clear",
+                            duration = SnackbarDuration.Long
+                        )
+                    }
+                }) {
                     Icon(Icons.Default.Delete, contentDescription = "Clear logs")
                 }
-                IconButton(onClick = { /* TODO: Export */ }) {
+                IconButton(onClick = { 
+                    viewModel.exportLogs()
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Logs exported successfully",
+                            actionLabel = "View",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
+                }) {
                     Icon(Icons.Default.Share, contentDescription = "Export logs")
                 }
             }
@@ -72,25 +151,77 @@ fun NetworkMonitorScreen(
             singleLine = true
         )
 
-        // Tabs
-        TabRow(selectedTabIndex = selectedTab.ordinal) {
-            NetworkMonitorTab.values().forEach { tab ->
+        // Scrollable Tabs with chip/pill styling
+        ScrollableTabRow(
+            selectedTabIndex = selectedTab.ordinal,
+            modifier = Modifier.fillMaxWidth(),
+            edgePadding = 16.dp,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.primary,
+            divider = { 
+                HorizontalDivider(
+                    modifier = Modifier.fillMaxWidth(),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                )
+            },
+            indicator = { tabPositions ->
+                TabRowDefaults.Indicator(
+                    modifier = Modifier,
+                    height = 0.dp,
+                    color = Color.Transparent
+                )
+            }
+        ) {
+            NetworkMonitorTab.values().forEachIndexed { index, tab ->
                 Tab(
                     selected = selectedTab == tab,
-                    onClick = { viewModel.selectTab(tab) },
-                    text = { Text(tab.name) }
+                    onClick = { 
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
+                    },
+                    text = { 
+                        Text(
+                            text = tab.name.lowercase().let { 
+                                if (it.isNotEmpty()) it[0].uppercase() + it.substring(1)
+                                else it
+                            },
+                            fontSize = 11.sp,
+                            fontWeight = if (selectedTab == tab) FontWeight.SemiBold else FontWeight.Medium,
+                            color = if (selectedTab == tab) 
+                                MaterialTheme.colorScheme.onPrimary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    modifier = Modifier
+                        .padding(horizontal = 1.dp, vertical = 2.dp)
+                        .background(
+                            color = if (selectedTab == tab) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(50.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
                 )
             }
         }
 
-        // Content
+        // Content with HorizontalPager for swipe gestures
         Box(modifier = Modifier.fillMaxSize()) {
-            when (selectedTab) {
-                NetworkMonitorTab.HTTP -> HttpLogsContent(viewModel, onNavigateToDetails)
-                NetworkMonitorTab.WEBSOCKET -> WebSocketEventsContent(viewModel)
-                NetworkMonitorTab.CURL -> CurlCommandsContent(viewModel)
-                NetworkMonitorTab.SUMMARY -> SummaryContent(networkSummary)
-                NetworkMonitorTab.FAILED -> FailedRequestsContent(viewModel, onNavigateToDetails)
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                when (NetworkMonitorTab.values()[page]) {
+                    NetworkMonitorTab.HTTP -> HttpLogsContent(viewModel, onNavigateToDetails, onNavigateToEditor)
+                    NetworkMonitorTab.WEBSOCKET -> WebSocketEventsContent(viewModel)
+                    NetworkMonitorTab.CURL -> CurlCommandsContent(viewModel)
+                    NetworkMonitorTab.SUMMARY -> SummaryContent(networkSummary)
+                    NetworkMonitorTab.FAILED -> FailedRequestsContent(viewModel, onNavigateToDetails, onNavigateToEditor)
+                }
             }
 
             if (isLoading) {
@@ -99,49 +230,46 @@ fun NetworkMonitorScreen(
                 )
             }
         }
-    }
-
-    // Clear confirmation dialog
-    if (showClearDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearDialog = false },
-            title = { Text("Clear All Logs") },
-            text = { Text("Are you sure you want to clear all network logs? This action cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.clearAllLogs()
-                        showClearDialog = false
-                    }
-                ) {
-                    Text("Clear")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
+        
+        // Snackbar Host
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            SnackbarHost(
+                hostState = snackbarHostState
+            )
+        }
+        }
     }
 }
 
 @Composable
 private fun HttpLogsContent(
     viewModel: NetworkMonitorViewModel,
-    onNavigateToDetails: (Long) -> Unit
+    onNavigateToDetails: (Long) -> Unit,
+    onNavigateToEditor: (NetworkLog?) -> Unit
 ) {
     val logs by viewModel.networkLogs.collectAsStateWithLifecycle()
 
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(logs) { log ->
-            NetworkLogItem(
-                log = log,
-                onClick = { onNavigateToDetails(log.id) }
-            )
+    if (logs.isEmpty()) {
+        EmptyStateContent(
+            icon = Icons.Default.Http,
+            title = "No HTTP Requests",
+            message = "Start making network requests to see them here"
+        )
+    } else {
+        LazyColumn(
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(logs) { log ->
+                NetworkLogItem(
+                    log = log,
+                    onClick = { onNavigateToDetails(log.id) },
+                    onEdit = { onNavigateToEditor(log) }
+                )
+            }
         }
     }
 }
@@ -150,12 +278,20 @@ private fun HttpLogsContent(
 private fun WebSocketEventsContent(viewModel: NetworkMonitorViewModel) {
     val events by viewModel.webSocketEvents.collectAsStateWithLifecycle()
 
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(events) { event ->
-            WebSocketEventItem(event = event)
+    if (events.isEmpty()) {
+        EmptyStateContent(
+            icon = Icons.Default.Wifi,
+            title = "No WebSocket Events",
+            message = "WebSocket connections and events will appear here"
+        )
+    } else {
+        LazyColumn(
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(events) { event ->
+                WebSocketEventItem(event = event)
+            }
         }
     }
 }
@@ -163,12 +299,11 @@ private fun WebSocketEventsContent(viewModel: NetworkMonitorViewModel) {
 @Composable
 private fun SummaryContent(summary: com.summitcodeworks.networkmonitor.model.NetworkSummary?) {
     if (summary == null) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("No data available")
-        }
+        EmptyStateContent(
+            icon = Icons.Default.Analytics,
+            title = "No Network Data",
+            message = "Network statistics will appear here once you start making requests"
+        )
         return
     }
 
@@ -219,13 +354,22 @@ private fun SummaryContent(summary: com.summitcodeworks.networkmonitor.model.Net
 @Composable
 private fun CurlCommandsContent(viewModel: NetworkMonitorViewModel) {
     val logs by viewModel.networkLogs.collectAsStateWithLifecycle()
+    val curlLogs = logs.filter { it.curlCommand != null }
 
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(logs.filter { it.curlCommand != null }) { log ->
-            CurlCommandItem(log = log)
+    if (curlLogs.isEmpty()) {
+        EmptyStateContent(
+            icon = Icons.Default.Terminal,
+            title = "No cURL Commands",
+            message = "cURL commands will be generated for your network requests"
+        )
+    } else {
+        LazyColumn(
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(curlLogs) { log ->
+                CurlCommandItem(log = log)
+            }
         }
     }
 }
@@ -233,19 +377,73 @@ private fun CurlCommandsContent(viewModel: NetworkMonitorViewModel) {
 @Composable
 private fun FailedRequestsContent(
     viewModel: NetworkMonitorViewModel,
-    onNavigateToDetails: (Long) -> Unit
+    onNavigateToDetails: (Long) -> Unit,
+    onNavigateToEditor: (NetworkLog?) -> Unit
 ) {
     val failedRequests by viewModel.failedRequests.collectAsStateWithLifecycle()
 
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    if (failedRequests.isEmpty()) {
+        EmptyStateContent(
+            icon = Icons.Default.CheckCircle,
+            title = "No Failed Requests",
+            message = "Great! All your network requests are successful"
+        )
+    } else {
+        LazyColumn(
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(failedRequests) { log ->
+                NetworkLogItem(
+                    log = log,
+                    onClick = { onNavigateToDetails(log.id) },
+                    onEdit = { onNavigateToEditor(log) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyStateContent(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    message: String
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
-        items(failedRequests) { log ->
-            NetworkLogItem(
-                log = log,
-                onClick = { onNavigateToDetails(log.id) }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
+            
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                Text(
+                    text = message,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 32.dp)
+                )
+            }
         }
     }
 }
@@ -253,7 +451,8 @@ private fun FailedRequestsContent(
 @Composable
 private fun NetworkLogItem(
     log: NetworkLog,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onEdit: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
@@ -275,7 +474,23 @@ private fun NetworkLogItem(
                     fontWeight = FontWeight.Bold,
                     color = getMethodColor(log.method)
                 )
-                StatusChip(log.responseCode)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (onEdit != null) {
+                        IconButton(
+                            onClick = onEdit,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit Request",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    StatusChip(log.responseCode)
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -489,12 +704,12 @@ private fun SummaryCard(
 }
 
 @Composable
-private fun StatusChip(responseCode: Int?) {
+fun StatusChip(responseCode: Int?) {
     val color = when (responseCode) {
-        in 200..299 -> Color.Green
-        in 300..399 -> Color.Blue
-        in 400..499 -> Color(0xFFFF9800)
-        in 500..599 -> Color.Red
+        in 200..299 -> StatusSuccess
+        in 300..399 -> StatusRedirect
+        in 400..499 -> StatusClientError
+        in 500..599 -> StatusServerError
         else -> Color.Gray
     }
 
@@ -515,11 +730,11 @@ private fun StatusChip(responseCode: Int?) {
 
 private fun getMethodColor(method: String?): Color {
     return when (method?.uppercase()) {
-        "GET" -> Color.Blue
-        "POST" -> Color.Green
-        "PUT" -> Color(0xFFFF9800)
-        "DELETE" -> Color.Red
-        "PATCH" -> Color.Magenta
+        "GET" -> GetMethodColor
+        "POST" -> PostMethodColor
+        "PUT" -> PutMethodColor
+        "DELETE" -> DeleteMethodColor
+        "PATCH" -> PatchMethodColor
         else -> Color.Gray
     }
 }

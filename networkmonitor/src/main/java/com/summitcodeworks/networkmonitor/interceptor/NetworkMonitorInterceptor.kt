@@ -238,17 +238,49 @@ class NetworkMonitorInterceptor @Inject constructor(
         for (i in 0 until request.headers.size) {
             val name = request.headers.name(i)
             val value = request.headers.value(i)
-            curlBuilder.append(" \\\n  -H '$name: $value'")
+            // Properly escape header values
+            val escapedValue = value.replace("\"", "\\\"")
+            curlBuilder.append(" \\\n  -H \"$name: $escapedValue\"")
         }
 
         // Add body for POST/PUT/PATCH requests
         if (!requestBody.isNullOrEmpty() && request.method in listOf("POST", "PUT", "PATCH")) {
-            val escapedBody = requestBody.replace("'", "'\"'\"'")
-            curlBuilder.append(" \\\n  -d '$escapedBody'")
+            val contentType = request.header("Content-Type")?.lowercase()
+
+            when {
+                contentType?.contains("application/json") == true -> {
+                    // For JSON, use proper escaping and formatting
+                    val escapedBody = requestBody
+                        .replace("\\", "\\\\")  // Escape backslashes first
+                        .replace("\"", "\\\"")  // Escape double quotes
+                        .replace("\n", "\\n")   // Escape newlines
+                        .replace("\r", "\\r")   // Escape carriage returns
+                        .replace("\t", "\\t")   // Escape tabs
+                    curlBuilder.append(" \\\n  -d \"$escapedBody\"")
+                }
+                contentType?.contains("application/x-www-form-urlencoded") == true -> {
+                    // For form data, we can use single quotes safely if no single quotes in data
+                    if (requestBody.contains("'")) {
+                        val escapedBody = requestBody.replace("\"", "\\\"")
+                        curlBuilder.append(" \\\n  -d \"$escapedBody\"")
+                    } else {
+                        curlBuilder.append(" \\\n  -d '$requestBody'")
+                    }
+                }
+                else -> {
+                    // For other content types, try to escape appropriately
+                    if (requestBody.contains("\"") && !requestBody.contains("'")) {
+                        curlBuilder.append(" \\\n  -d '$requestBody'")
+                    } else {
+                        val escapedBody = requestBody.replace("\"", "\\\"")
+                        curlBuilder.append(" \\\n  -d \"$escapedBody\"")
+                    }
+                }
+            }
         }
 
         // Add URL (always last)
-        curlBuilder.append(" \\\n  '${request.url}'")
+        curlBuilder.append(" \\\n  \"${request.url}\"")
 
         return curlBuilder.toString()
     }

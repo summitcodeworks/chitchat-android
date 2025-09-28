@@ -4,15 +4,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.summitcodeworks.chitchat.presentation.viewmodel.HomeViewModel
@@ -165,60 +168,102 @@ fun HomeScreen(
                 .padding(paddingValues)
         ) {
 
-            // Tab Row
-            TabRow(
+            // Tab Row with chip/pill styling like network monitor
+            ScrollableTabRow(
                 selectedTabIndex = selectedTabIndex,
                 modifier = Modifier.fillMaxWidth(),
+                edgePadding = 16.dp,
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                contentColor = MaterialTheme.colorScheme.primary,
+                divider = {
+                    HorizontalDivider(
+                        modifier = Modifier.fillMaxWidth(),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    )
+                },
                 indicator = { tabPositions ->
                     TabRowDefaults.Indicator(
-                        color = MaterialTheme.colorScheme.primary,
-                        height = 3.dp
+                        modifier = Modifier,
+                        height = 0.dp,
+                        color = Color.Transparent
                     )
                 }
             ) {
                 Tab(
                     selected = selectedTabIndex == 0,
                     onClick = { selectedTabIndex = 0 },
-                    text = { 
+                    text = {
                         Text(
                             "Chats",
-                            color = if (selectedTabIndex == 0) 
-                                MaterialTheme.colorScheme.primary 
-                            else 
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = if (selectedTabIndex == 0) FontWeight.Bold else FontWeight.Normal
-                        ) 
-                    }
+                            fontSize = 11.sp,
+                            fontWeight = if (selectedTabIndex == 0) FontWeight.SemiBold else FontWeight.Medium,
+                            color = if (selectedTabIndex == 0)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    modifier = Modifier
+                        .padding(horizontal = 1.dp, vertical = 2.dp)
+                        .background(
+                            color = if (selectedTabIndex == 0)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(50.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
                 )
                 Tab(
                     selected = selectedTabIndex == 1,
                     onClick = { selectedTabIndex = 1 },
-                    text = { 
+                    text = {
                         Text(
                             "Status",
-                            color = if (selectedTabIndex == 1) 
-                                MaterialTheme.colorScheme.primary 
-                            else 
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = if (selectedTabIndex == 1) FontWeight.Bold else FontWeight.Normal
-                        ) 
-                    }
+                            fontSize = 11.sp,
+                            fontWeight = if (selectedTabIndex == 1) FontWeight.SemiBold else FontWeight.Medium,
+                            color = if (selectedTabIndex == 1)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    modifier = Modifier
+                        .padding(horizontal = 1.dp, vertical = 2.dp)
+                        .background(
+                            color = if (selectedTabIndex == 1)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(50.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
                 )
                 Tab(
                     selected = selectedTabIndex == 2,
                     onClick = { selectedTabIndex = 2 },
-                    text = { 
+                    text = {
                         Text(
                             "Calls",
-                            color = if (selectedTabIndex == 2) 
-                                MaterialTheme.colorScheme.primary 
-                            else 
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = if (selectedTabIndex == 2) FontWeight.Bold else FontWeight.Normal
-                        ) 
-                    }
+                            fontSize = 11.sp,
+                            fontWeight = if (selectedTabIndex == 2) FontWeight.SemiBold else FontWeight.Medium,
+                            color = if (selectedTabIndex == 2)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    modifier = Modifier
+                        .padding(horizontal = 1.dp, vertical = 2.dp)
+                        .background(
+                            color = if (selectedTabIndex == 2)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(50.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
                 )
             }
 

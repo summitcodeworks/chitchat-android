@@ -165,3 +165,7 @@ networkmonitor/captures/
 *.bak
 *.swp
 *~.nib
+
+# Disabled files
+*.disabled
+*.kt.disabled

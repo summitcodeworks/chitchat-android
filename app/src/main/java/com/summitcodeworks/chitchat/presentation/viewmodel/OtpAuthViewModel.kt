@@ -92,6 +92,7 @@ class OtpAuthViewModel @Inject constructor(
                         )
 
                         // Update device token after successful authentication
+                        // Use the fresh token from the response to avoid any persistence timing issues
                         updateDeviceTokenAfterAuth(authResponse.accessToken)
                     },
                     onFailure = { exception ->

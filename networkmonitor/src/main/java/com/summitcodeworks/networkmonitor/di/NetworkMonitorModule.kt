@@ -36,12 +36,6 @@ object NetworkMonitorModule {
 
     @Provides
     @Singleton
-    fun provideGson(): Gson {
-        return Gson()
-    }
-
-    @Provides
-    @Singleton
     fun provideNetworkMonitorInterceptor(
         networkLogDao: NetworkLogDao,
         gson: Gson

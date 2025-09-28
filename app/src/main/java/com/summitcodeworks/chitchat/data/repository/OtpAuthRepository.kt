@@ -55,10 +55,13 @@ class OtpAuthRepository @Inject constructor(
             if (response.isSuccessful && response.body()?.success == true) {
                 val authResponse = response.body()?.data
                 if (authResponse != null) {
+                    // Save authentication data to OtpAuthManager
+                    otpAuthManager.setAuthData(authResponse)
+
                     // Save user to local database
                     val userEntity = userMapper.dtoToEntity(authResponse.user)
                     userDao.insertUser(userEntity)
-                    
+
                     Result.success(authResponse)
                 } else {
                     Result.failure(Exception("Invalid response data"))

@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
@@ -48,7 +49,7 @@ class NetworkMonitorNotificationService : Service() {
     lateinit var webSocketEventDao: WebSocketEventDao
 
     private val scope = CoroutineScope(Dispatchers.IO)
-    private val notificationManager = NotificationManagerCompat.from(this)
+    private lateinit var notificationManager: NotificationManagerCompat
     private val requestCounter = AtomicInteger(0)
     private val wsEventCounter = AtomicInteger(0)
 
@@ -64,6 +65,7 @@ class NetworkMonitorNotificationService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        notificationManager = NotificationManagerCompat.from(this)
         createNotificationChannel()
     }
 
@@ -105,11 +107,20 @@ class NetworkMonitorNotificationService : Service() {
 
     private fun startForegroundService() {
         val notification = createPersistentNotification()
-        startForeground(NOTIFICATION_ID, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
     }
 
     private fun stopForegroundService() {
-        stopForeground(true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
         stopSelf()
     }
 

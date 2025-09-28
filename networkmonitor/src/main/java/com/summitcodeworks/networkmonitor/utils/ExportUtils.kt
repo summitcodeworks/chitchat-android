@@ -139,32 +139,21 @@ object ExportUtils {
         httpLogs: List<NetworkLog>,
         webSocketEvents: List<WebSocketEvent>
     ): Map<String, Any> {
-        val httpSuccessful = httpLogs.count { log ->
-            log.responseCode != null && log.responseCode in 200..299
-        }
-        val httpFailed = httpLogs.count { log ->
-            log.responseCode != null && log.responseCode >= 400 || log.error != null
-        }
-
+        val totalRequests = httpLogs.size
+        val successfulRequests = httpLogs.count { (it.responseCode ?: 0) in 200..299 }
+        val failedRequests = httpLogs.count { (it.responseCode ?: 0) >= 400 || it.error != null }
         val totalDataTransferred = httpLogs.sumOf { it.requestSize + it.responseSize }
-        val averageResponseTime = httpLogs.mapNotNull { it.duration }.average().let {
-            if (it.isNaN()) 0.0 else it
-        }
-
-        val webSocketConnections = webSocketEvents.distinctBy { it.connectionId }.size
-        val webSocketMessages = webSocketEvents.count {
-            it.eventType.name.contains("MESSAGE")
-        }
+        val averageResponseTime = if (httpLogs.isNotEmpty()) {
+            httpLogs.mapNotNull { it.duration }.average().toLong()
+        } else 0L
 
         return mapOf(
-            "totalHttpRequests" to httpLogs.size,
-            "successfulHttpRequests" to httpSuccessful,
-            "failedHttpRequests" to httpFailed,
+            "totalRequests" to totalRequests,
+            "successfulRequests" to successfulRequests,
+            "failedRequests" to failedRequests,
             "totalDataTransferred" to totalDataTransferred,
             "averageResponseTime" to averageResponseTime,
-            "webSocketConnections" to webSocketConnections,
-            "webSocketMessages" to webSocketMessages,
-            "totalWebSocketEvents" to webSocketEvents.size
+            "webSocketEvents" to webSocketEvents.size
         )
     }
 }
