@@ -1,22 +1,69 @@
 package com.summitcodeworks.chitchat.data.remote.websocket
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import com.google.gson.Gson
+import com.google.gson.JsonParser
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Central manager for all WebSocket connections
- * Manages messaging, calls, and status WebSocket clients
+ * Central manager for all WebSocket connections in ChitChat.
+ * 
+ * This class orchestrates multiple WebSocket connections for different features
+ * of the application, providing a unified interface for real-time communication.
+ * It manages three specialized WebSocket clients for messaging, calls, and status updates.
+ * 
+ * WebSocket Clients Managed:
+ * - ChitChatWebSocketClient: Handles messaging, typing indicators, and user presence
+ * - CallWebSocketClient: Manages voice/video call signaling and events
+ * - StatusWebSocketClient: Handles status updates and story sharing
+ * 
+ * Key responsibilities:
+ * - Establish and maintain multiple WebSocket connections
+ * - Coordinate connection states across all clients
+ * - Provide unified event streams for UI consumption
+ * - Handle connection failures and reconnection logic
+ * - Manage authentication tokens for all connections
+ * - Route messages to appropriate handlers
+ * 
+ * Real-time features supported:
+ * - Instant messaging and message delivery
+ * - Typing indicators and read receipts
+ * - User online/offline status
+ * - Voice/video call signaling
+ * - Status updates and story notifications
+ * - Push notification coordination
+ * 
+ * Connection management:
+ * - Automatic reconnection on network changes
+ * - Graceful degradation when connections fail
+ * - Connection state monitoring and reporting
+ * - Resource cleanup on app termination
+ * 
+ * @param messageWebSocket WebSocket client for messaging functionality
+ * @param callWebSocket WebSocket client for call management
+ * @param statusWebSocket WebSocket client for status updates
+ * @param gson JSON serializer for message parsing
+ * 
+ * @author ChitChat Development Team
+ * @since 1.0
  */
 @Singleton
 class MultiWebSocketManager @Inject constructor(
     private val messageWebSocket: ChitChatWebSocketClient,
     private val callWebSocket: CallWebSocketClient,
-    private val statusWebSocket: StatusWebSocketClient
+    private val statusWebSocket: StatusWebSocketClient,
+    private val gson: Gson
 ) {
+    
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
     // Combined connection state
     val isConnected: Boolean
@@ -124,9 +171,51 @@ class MultiWebSocketManager @Inject constructor(
     }
     
     private fun setupMessageRouting() {
-        // This would be implemented with coroutines to listen to the WebSocket flows
-        // and route them to specific event flows for easier handling in ViewModels
-        // For now, this is a placeholder for the routing logic
+        // Route new messages to MessageReceivedEvent
+        scope.launch {
+            newMessages.collect { message ->
+                try {
+                    val data = gson.fromJson(gson.toJson(message.data), com.google.gson.JsonObject::class.java)
+                    
+                    val messageEvent = MessageReceivedEvent(
+                        messageId = data.get("id")?.asString ?: "",
+                        senderId = data.get("senderId")?.asLong ?: 0L,
+                        receiverId = data.get("receiverId")?.asLong,
+                        groupId = data.get("groupId")?.asLong,
+                        content = data.get("content")?.asString ?: "",
+                        messageType = data.get("type")?.asString ?: "TEXT",
+                        timestamp = data.get("timestamp")?.asString ?: System.currentTimeMillis().toString(),
+                        isFromCurrentUser = data.get("isFromCurrentUser")?.asBoolean ?: false
+                    )
+                    
+                    _messageReceived.emit(messageEvent)
+                } catch (e: Exception) {
+                    // Log error but don't crash
+                    android.util.Log.e("MultiWebSocketManager", "Error parsing message: ${e.message}")
+                }
+            }
+        }
+        
+        // Route typing indicators to UserTypingEvent
+        scope.launch {
+            typingIndicators.collect { message ->
+                try {
+                    val data = gson.fromJson(gson.toJson(message.data), com.google.gson.JsonObject::class.java)
+                    
+                    val typingEvent = UserTypingEvent(
+                        userId = data.get("userId")?.asLong ?: 0L,
+                        receiverId = data.get("receiverId")?.asLong,
+                        groupId = data.get("groupId")?.asLong,
+                        isTyping = data.get("isTyping")?.asBoolean ?: false,
+                        userName = data.get("userName")?.asString
+                    )
+                    
+                    _userTyping.emit(typingEvent)
+                } catch (e: Exception) {
+                    android.util.Log.e("MultiWebSocketManager", "Error parsing typing indicator: ${e.message}")
+                }
+            }
+        }
     }
 }
 

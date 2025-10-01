@@ -50,6 +50,16 @@ interface NetworkLogDao {
         WHERE requestTime >= :startTime
     """)
     suspend fun getNetworkSummary(startTime: Long): NetworkSummary?
+    
+    @Query("""
+        DELETE FROM network_logs 
+        WHERE id NOT IN (
+            SELECT MAX(id) 
+            FROM network_logs 
+            GROUP BY requestId
+        )
+    """)
+    suspend fun removeDuplicateLogs()
 
     @Query("SELECT COUNT(*) FROM network_logs")
     suspend fun getLogCount(): Int

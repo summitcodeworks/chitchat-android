@@ -32,25 +32,56 @@ class NetworkMonitorInterceptor @Inject constructor(
         // Create initial log entry
         val requestLog = createRequestLog(request, requestId, requestTime)
 
-        // Insert initial log
-        scope.launch {
+        // Insert initial log and get the generated ID synchronously
+        val logId = kotlinx.coroutines.runBlocking {
             networkLogDao.insertLog(requestLog)
         }
 
         var response: Response? = null
         var exception: IOException? = null
+        var responseBodyString: String? = null
 
         try {
             response = chain.proceed(request)
-            return response
+            
+            // Read and cache the response body BEFORE it's consumed
+            val responseBody = response.body
+            if (responseBody != null) {
+                val source = responseBody.source()
+                source.request(Long.MAX_VALUE) // Buffer the entire body
+                val buffer = source.buffer
+                
+                // Read the response body
+                responseBodyString = buffer.clone().readUtf8()
+                
+                // Create a new response with a fresh body that can be consumed by the caller
+                val contentType = responseBody.contentType()
+                val newResponseBody = okhttp3.ResponseBody.create(contentType, responseBodyString)
+                
+                val newResponse = response.newBuilder()
+                    .body(newResponseBody)
+                    .build()
+                
+                // Update log with response data immediately (with cached body)
+                scope.launch {
+                    updateLogWithResponseBody(requestId, newResponse, responseBodyString, requestTime, logId)
+                }
+                
+                return newResponse
+            } else {
+                // No response body, log as is
+                scope.launch {
+                    updateLogWithResponseBody(requestId, response, null, requestTime, logId)
+                }
+                return response
+            }
         } catch (e: IOException) {
             exception = e
-            throw e
-        } finally {
-            // Update log with response data
+            // Update log with exception
             scope.launch {
-                updateLogWithResponse(requestId, response, exception, requestTime)
+                updateLogWithException(requestId, exception, requestTime, logId)
             }
+            throw e
         }
     }
 
@@ -75,72 +106,81 @@ class NetworkMonitorInterceptor @Inject constructor(
         )
     }
 
-    private suspend fun updateLogWithResponse(
+    private suspend fun updateLogWithResponseBody(
         requestId: String,
-        response: Response?,
-        exception: IOException?,
-        requestTime: Long
+        response: Response,
+        responseBodyString: String?,
+        requestTime: Long,
+        logId: Long
     ) {
         val responseTime = System.currentTimeMillis()
         val duration = responseTime - requestTime
+        
+        val responseHeaders = headersToString(response.headers)
+        val responseSize = calculateResponseSize(response)
+        val requestBody = getRequestBody(response.request)
+        val curlCommand = generateCurlCommand(response.request, requestBody)
 
-        if (response != null) {
-            val responseHeaders = headersToString(response.headers)
-            val responseBody = getResponseBody(response)
-            val responseSize = calculateResponseSize(response)
+        val updatedLog = NetworkLog(
+            id = logId, // Use the same ID to update the existing log
+            requestId = requestId,
+            type = NetworkType.HTTP,
+            method = response.request.method,
+            url = response.request.url.toString(),
+            requestHeaders = headersToString(response.request.headers),
+            requestBody = requestBody,
+            responseCode = response.code,
+            responseHeaders = responseHeaders,
+            responseBody = responseBodyString,
+            requestTime = requestTime,
+            responseTime = responseTime,
+            duration = duration,
+            requestSize = calculateRequestSize(response.request),
+            responseSize = responseSize,
+            isSSL = response.request.url.isHttps,
+            protocol = response.protocol.toString(),
+            curlCommand = curlCommand
+        )
 
-            // Get the existing log and update it
-            val logs = networkLogDao.getAllLogs()
-            val requestBody = getRequestBody(response.request)
-            val curlCommand = generateCurlCommand(response.request, requestBody)
+        networkLogDao.updateLog(updatedLog) // Use UPDATE instead of INSERT
+    }
+    
+    private suspend fun updateLogWithException(
+        requestId: String,
+        exception: IOException,
+        requestTime: Long,
+        logId: Long
+    ) {
+        val responseTime = System.currentTimeMillis()
+        val duration = responseTime - requestTime
+        
+        // Get the existing log to preserve request data
+        val existingLog = networkLogDao.getLogById(logId)
+        
+        val errorLog = NetworkLog(
+            id = logId, // Use the same ID to update
+            requestId = requestId,
+            type = NetworkType.HTTP,
+            method = existingLog?.method ?: "UNKNOWN",
+            url = existingLog?.url ?: "UNKNOWN",
+            requestHeaders = existingLog?.requestHeaders,
+            requestBody = existingLog?.requestBody,
+            requestTime = requestTime,
+            responseTime = responseTime,
+            duration = duration,
+            requestSize = existingLog?.requestSize ?: 0,
+            isSSL = existingLog?.isSSL ?: false,
+            protocol = existingLog?.protocol ?: "HTTP/1.1",
+            curlCommand = existingLog?.curlCommand,
+            error = "Exception: ${exception.javaClass.simpleName} - ${exception.message}\nStack trace: ${exception.stackTraceToString()}"
+        )
 
-            // Find and update the log - simplified approach
-            val updatedLog = NetworkLog(
-                requestId = requestId,
-                type = NetworkType.HTTP,
-                method = response.request.method,
-                url = response.request.url.toString(),
-                requestHeaders = headersToString(response.request.headers),
-                requestBody = requestBody,
-                responseCode = response.code,
-                responseHeaders = responseHeaders,
-                responseBody = responseBody,
-                requestTime = requestTime,
-                responseTime = responseTime,
-                duration = duration,
-                requestSize = calculateRequestSize(response.request),
-                responseSize = responseSize,
-                isSSL = response.request.url.isHttps,
-                protocol = response.protocol.toString(),
-                curlCommand = curlCommand
-            )
-
-            networkLogDao.insertLog(updatedLog)
-        } else if (exception != null) {
-            // Create error log without looking up original log
-            val errorLog = NetworkLog(
-                requestId = requestId,
-                type = NetworkType.HTTP,
-                method = "UNKNOWN",
-                url = "UNKNOWN",
-                requestHeaders = null,
-                requestBody = null,
-                requestTime = requestTime,
-                responseTime = responseTime,
-                duration = duration,
-                requestSize = 0,
-                isSSL = false,
-                protocol = "HTTP/1.1",
-                curlCommand = null,
-                error = "Exception: ${exception.javaClass.simpleName} - ${exception.message}\nStack trace: ${exception.stackTraceToString()}"
-            )
-
-            networkLogDao.insertLog(errorLog)
-        }
+        networkLogDao.updateLog(errorLog) // Use UPDATE instead of INSERT
     }
 
     private fun headersToString(headers: okhttp3.Headers): String {
-        return gson.toJson(headers.toMultimap())
+        val prettyGson = com.google.gson.GsonBuilder().setPrettyPrinting().create()
+        return prettyGson.toJson(headers.toMultimap())
     }
 
     private fun getRequestBody(request: Request): String? {
@@ -161,34 +201,6 @@ class NetworkMonitorInterceptor @Inject constructor(
             }
         } catch (e: Exception) {
             "Failed to read request body: ${e.message}"
-        }
-    }
-
-    private fun getResponseBody(response: Response): String? {
-        return try {
-            val contentType = response.headers["Content-Type"]
-            if (isPlainText(contentType)) {
-                val source = response.body?.source()
-                source?.let {
-                    val buffer = it.buffer
-                    // Clone the buffer to avoid consuming the original
-                    val clonedBuffer = buffer.clone()
-                    clonedBuffer.readUtf8()
-                }
-            } else if (contentType?.contains("json") == true) {
-                // Handle JSON content even if not explicitly text/*
-                val source = response.body?.source()
-                source?.let {
-                    val buffer = it.buffer
-                    val clonedBuffer = buffer.clone()
-                    clonedBuffer.readUtf8()
-                }
-            } else {
-                val contentLength = response.body?.contentLength() ?: 0
-                "[Binary Content - ${contentType ?: "unknown"} (${contentLength} bytes)]"
-            }
-        } catch (e: Exception) {
-            "Failed to read response body: ${e.message}"
         }
     }
 
@@ -249,32 +261,27 @@ class NetworkMonitorInterceptor @Inject constructor(
 
             when {
                 contentType?.contains("application/json") == true -> {
-                    // For JSON, use proper escaping and formatting
-                    val escapedBody = requestBody
-                        .replace("\\", "\\\\")  // Escape backslashes first
-                        .replace("\"", "\\\"")  // Escape double quotes
-                        .replace("\n", "\\n")   // Escape newlines
-                        .replace("\r", "\\r")   // Escape carriage returns
-                        .replace("\t", "\\t")   // Escape tabs
-                    curlBuilder.append(" \\\n  -d \"$escapedBody\"")
+                    // For JSON, minify it first to make cURL more readable
+                    val minifiedJson = try {
+                        val jsonElement = com.google.gson.JsonParser.parseString(requestBody)
+                        gson.toJson(jsonElement)  // This creates compact JSON
+                    } catch (e: Exception) {
+                        requestBody
+                    }
+                    
+                    // Escape for shell
+                    val escapedBody = minifiedJson.replace("'", "'\\''")  // Escape single quotes for single-quote wrapping
+                    curlBuilder.append(" \\\n  -d '").append(escapedBody).append("'")
                 }
                 contentType?.contains("application/x-www-form-urlencoded") == true -> {
-                    // For form data, we can use single quotes safely if no single quotes in data
-                    if (requestBody.contains("'")) {
-                        val escapedBody = requestBody.replace("\"", "\\\"")
-                        curlBuilder.append(" \\\n  -d \"$escapedBody\"")
-                    } else {
-                        curlBuilder.append(" \\\n  -d '$requestBody'")
-                    }
+                    // For form data, use single quotes
+                    val escapedBody = requestBody.replace("'", "'\\''")
+                    curlBuilder.append(" \\\n  -d '").append(escapedBody).append("'")
                 }
                 else -> {
-                    // For other content types, try to escape appropriately
-                    if (requestBody.contains("\"") && !requestBody.contains("'")) {
-                        curlBuilder.append(" \\\n  -d '$requestBody'")
-                    } else {
-                        val escapedBody = requestBody.replace("\"", "\\\"")
-                        curlBuilder.append(" \\\n  -d \"$escapedBody\"")
-                    }
+                    // For other content types, use single quotes with proper escaping
+                    val escapedBody = requestBody.replace("'", "'\\''")
+                    curlBuilder.append(" \\\n  -d '").append(escapedBody).append("'")
                 }
             }
         }

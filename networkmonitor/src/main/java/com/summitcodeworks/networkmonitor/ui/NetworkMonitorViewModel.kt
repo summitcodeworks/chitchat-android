@@ -15,6 +15,41 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * ViewModel for managing network monitoring functionality in the NetworkMonitor module.
+ * 
+ * This ViewModel handles the presentation logic for network debugging features,
+ * providing real-time network log monitoring, search capabilities, and performance
+ * analytics for the ChitChat application's network requests.
+ * 
+ * Key responsibilities:
+ * - Monitor and display HTTP request/response logs
+ * - Track WebSocket events and connections
+ * - Provide search and filtering capabilities
+ * - Generate network performance summaries
+ * - Manage UI state for network monitoring screens
+ * - Handle data export and sharing functionality
+ * 
+ * The ViewModel integrates with local Room database to:
+ * - Store and retrieve network logs
+ * - Provide real-time updates via Flow
+ * - Enable efficient search and filtering
+ * - Support data persistence across app sessions
+ * 
+ * Network monitoring capabilities:
+ * - HTTP request/response inspection
+ * - WebSocket event tracking
+ * - Performance metrics calculation
+ * - Error rate monitoring
+ * - Response time analysis
+ * 
+ * @param networkLogDao Data access object for HTTP network logs
+ * @param webSocketEventDao Data access object for WebSocket events
+ * @param context Application context for various operations
+ * 
+ * @author ChitChat Development Team
+ * @since 1.0
+ */
 @HiltViewModel
 class NetworkMonitorViewModel @Inject constructor(
     private val networkLogDao: NetworkLogDao,
@@ -72,6 +107,10 @@ class NetworkMonitorViewModel @Inject constructor(
 
     init {
         loadNetworkSummary()
+        // Clean up any duplicate logs from old version
+        viewModelScope.launch {
+            networkLogDao.removeDuplicateLogs()
+        }
     }
 
     fun updateSearchQuery(query: String) {

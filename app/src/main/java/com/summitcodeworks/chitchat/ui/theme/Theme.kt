@@ -48,6 +48,45 @@ private val LightColorScheme = lightColorScheme(
     onError = OnPrimary
 )
 
+/**
+ * Main theme composable for the ChitChat application.
+ * 
+ * This composable defines the complete Material 3 theme for the application,
+ * including color schemes, typography, and status bar configuration. It supports
+ * both light and dark themes with consistent branding across the app.
+ * 
+ * Theme features:
+ * - Material 3 design system implementation
+ * - Light and dark theme support
+ * - Custom color scheme for brand consistency
+ * - Typography system with proper text styles
+ * - Status bar configuration for modern UI
+ * - Dynamic color support (Android 12+) - disabled for branding
+ * 
+ * Color scheme includes:
+ * - Primary colors for main UI elements
+ * - Secondary colors for accents and highlights
+ * - Surface colors for cards and containers
+ * - Error colors for validation and alerts
+ * - Background colors for screens and layouts
+ * 
+ * Status bar configuration:
+ * - Automatic status bar color matching
+ * - Light/dark status bar content based on theme
+ * - Edge-to-edge display support
+ * - Proper contrast for accessibility
+ * 
+ * The theme ensures:
+ * - Consistent visual identity across all screens
+ * - Proper contrast ratios for accessibility
+ * - Modern Material Design 3 aesthetics
+ * - Responsive design for different screen sizes
+ * - Dark theme support for user preference
+ * 
+ * @param darkTheme Whether to use dark theme (defaults to system setting)
+ * @param dynamicColor Whether to use Android 12+ dynamic colors (disabled for branding)
+ * @param content The composable content to be themed
+ */
 @Composable
 fun ChitChatTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -69,9 +108,9 @@ fun ChitChatTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            // Set status bar to white with black text for both light and dark themes
-            window.statusBarColor = android.graphics.Color.WHITE
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
+            // Set status bar appearance based on theme
+            window.statusBarColor = colorScheme.background.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
 

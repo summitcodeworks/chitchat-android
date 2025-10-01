@@ -15,6 +15,52 @@ import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Factory class for creating and managing API service instances in ChitChat.
+ * 
+ * This factory handles the creation of Retrofit instances and API services
+ * with proper configuration, interceptors, and environment management.
+ * It ensures consistent network configuration across all API calls.
+ * 
+ * Key responsibilities:
+ * - Create and configure Retrofit instances
+ * - Manage environment-specific API endpoints
+ * - Apply interceptors for authentication and monitoring
+ * - Handle environment changes and service invalidation
+ * - Provide singleton instances of API services
+ * 
+ * Network configuration:
+ * - OTP authentication interceptor for token injection
+ * - Error response interceptor for unified error handling
+ * - Network monitoring interceptor for debugging
+ * - HTTP logging interceptor for development
+ * - Connection timeout and retry configuration
+ * 
+ * Environment management:
+ * - Dynamic base URL switching for different environments
+ * - Automatic service recreation on environment changes
+ * - Support for development, staging, and production APIs
+ * - Environment-specific configuration handling
+ * 
+ * API services provided:
+ * - UserApiService: User management and profiles
+ * - MessageApiService: Messaging functionality
+ * - CallApiService: Voice/video calls
+ * - StatusApiService: Status updates and stories
+ * - MediaApiService: File uploads and media
+ * - NotificationApiService: Push notifications
+ * - GroupApiService: Group chat management
+ * - AdminApiService: Administrative functions
+ * 
+ * @param environmentManager Manager for environment configuration
+ * @param networkMonitorInterceptor Interceptor for network monitoring
+ * @param otpAuthInterceptor Interceptor for OTP authentication
+ * @param errorResponseInterceptor Interceptor for error handling
+ * @param context Application context for various operations
+ * 
+ * @author ChitChat Development Team
+ * @since 1.0
+ */
 @Singleton
 class ApiServiceFactory @Inject constructor(
     private val environmentManager: EnvironmentManager,

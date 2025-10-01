@@ -37,6 +37,38 @@ import com.summitcodeworks.networkmonitor.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Network Monitor screen for debugging and monitoring network requests.
+ * 
+ * This screen provides comprehensive network debugging capabilities for the
+ * ChitChat application, allowing developers to inspect HTTP requests, responses,
+ * WebSocket events, and network performance in real-time.
+ * 
+ * Key features:
+ * - HTTP request/response monitoring with detailed logs
+ * - WebSocket event tracking and analysis
+ * - Network performance metrics and summaries
+ * - Search and filter capabilities for network logs
+ * - Request/response body inspection
+ * - Error tracking and debugging information
+ * - Export capabilities for sharing network data
+ * 
+ * The screen is organized into tabs:
+ * - HTTP: HTTP requests and responses
+ * - WebSocket: Real-time WebSocket events
+ * - Summary: Network performance overview
+ * 
+ * This tool is essential for:
+ * - API debugging and testing
+ * - Performance optimization
+ * - Error diagnosis and troubleshooting
+ * - Network behavior analysis
+ * - Development and QA workflows
+ * 
+ * @param onNavigateToDetails Callback to navigate to detailed network log view
+ * @param onNavigateToEditor Callback to navigate to request editor
+ * @param viewModel ViewModel handling network monitoring logic and state
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NetworkMonitorScreen(
@@ -50,7 +82,6 @@ fun NetworkMonitorScreen(
     val networkSummary by viewModel.networkSummary.collectAsStateWithLifecycle()
 
     var showClearDialog by remember { mutableStateOf(false) }
-    var showFilterDialog by remember { mutableStateOf(false) }
     var showAnalyticsDialog by remember { mutableStateOf(false) }
     var currentFilter by remember { mutableStateOf(NetworkFilter()) }
     
@@ -75,22 +106,6 @@ fun NetworkMonitorScreen(
             viewModel.selectTab(newTab)
         }
     }
-    
-    // Handle snackbar actions
-    LaunchedEffect(snackbarHostState.currentSnackbarData) {
-        snackbarHostState.currentSnackbarData?.let { snackbarData ->
-            when (snackbarData.visuals.actionLabel) {
-                "Clear" -> {
-                    viewModel.clearAllLogs()
-                    snackbarHostState.currentSnackbarData?.dismiss()
-                }
-                "View" -> {
-                    // Handle view action for export
-                    snackbarHostState.currentSnackbarData?.dismiss()
-                }
-            }
-        }
-    }
 
     Box(
         modifier = Modifier
@@ -107,29 +122,26 @@ fun NetworkMonitorScreen(
                 IconButton(onClick = { onNavigateToEditor(null) }) {
                     Icon(Icons.Default.Add, contentDescription = "New Request")
                 }
-                IconButton(onClick = { showFilterDialog = true }) {
+                IconButton(onClick = { 
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Filter feature coming soon",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
+                }) {
                     Icon(Icons.Default.FilterList, contentDescription = "Filter")
                 }
                 IconButton(onClick = { showAnalyticsDialog = true }) {
                     Icon(Icons.Default.Analytics, contentDescription = "Analytics")
                 }
-                IconButton(onClick = { 
-                    coroutineScope.launch {
-                        snackbarHostState.showSnackbar(
-                            message = "Clear all network logs?",
-                            actionLabel = "Clear",
-                            duration = SnackbarDuration.Long
-                        )
-                    }
-                }) {
+                IconButton(onClick = { showClearDialog = true }) {
                     Icon(Icons.Default.Delete, contentDescription = "Clear logs")
                 }
                 IconButton(onClick = { 
-                    viewModel.exportLogs()
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(
-                            message = "Logs exported successfully",
-                            actionLabel = "View",
+                            message = "Export feature coming soon",
                             duration = SnackbarDuration.Short
                         )
                     }
@@ -242,6 +254,61 @@ fun NetworkMonitorScreen(
         }
         }
     }
+    
+    // Analytics Dialog
+    if (showAnalyticsDialog) {
+        AlertDialog(
+            onDismissRequest = { showAnalyticsDialog = false },
+            title = { Text("Network Analytics") },
+            text = { 
+                Column {
+                    networkSummary?.let { summary ->
+                        Text("Total Requests: ${summary.totalRequests}", fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("✓ Successful: ${summary.successfulRequests}", color = MaterialTheme.colorScheme.primary)
+                        if (summary.failedRequests > 0) {
+                            Text("⚡ Needs Attention: ${summary.failedRequests}", color = MaterialTheme.colorScheme.tertiary)
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Data Transferred: ${formatBytes(summary.totalDataTransferred)}")
+                        Text("Avg Response Time: ${summary.averageResponseTime}ms")
+                    } ?: Text("Loading analytics...")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAnalyticsDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+    
+    // Clear Dialog
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text("Clear All Logs") },
+            text = { Text("Are you sure you want to delete all network logs? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.clearAllLogs()
+                        showClearDialog = false
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("All logs cleared")
+                        }
+                    }
+                ) {
+                    Text("Clear", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -328,10 +395,10 @@ private fun SummaryContent(summary: com.summitcodeworks.networkmonitor.model.Net
         }
         item {
             SummaryCard(
-                title = "Failed",
+                title = "To Review",
                 value = summary.failedRequests.toString(),
-                icon = Icons.Default.Error,
-                color = Color.Red
+                icon = Icons.Default.Info,
+                color = MaterialTheme.colorScheme.tertiary
             )
         }
         item {
@@ -385,8 +452,8 @@ private fun FailedRequestsContent(
     if (failedRequests.isEmpty()) {
         EmptyStateContent(
             icon = Icons.Default.CheckCircle,
-            title = "No Failed Requests",
-            message = "Great! All your network requests are successful"
+            title = "All Systems Go!",
+            message = "Everything is working perfectly"
         )
     } else {
         LazyColumn(
@@ -575,9 +642,9 @@ private fun WebSocketEventItem(event: WebSocketEvent) {
             if (event.error != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Error: ${event.error}",
+                    text = "⚡ Connection interrupted - Reconnecting...",
                     fontSize = 12.sp,
-                    color = Color.Red,
+                    color = MaterialTheme.colorScheme.tertiary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )

@@ -17,10 +17,33 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * OTP Authentication ViewModel
+ * ViewModel for handling OTP (One-Time Password) authentication in ChitChat.
  * 
- * Handles SMS-based OTP authentication as the primary authentication method
- * for the ChitChat application.
+ * This ViewModel manages the complete OTP authentication flow including:
+ * - Sending OTP via SMS to user's phone number
+ * - Verifying OTP codes entered by the user
+ * - Managing authentication state and token storage
+ * - Updating device tokens for push notifications
+ * - Handling authentication persistence and sign-out
+ * 
+ * The OTP authentication system provides secure, phone-number-based authentication
+ * without requiring traditional username/password credentials. It integrates with
+ * Firebase for SMS delivery and maintains session state across app restarts.
+ * 
+ * Key features:
+ * - SMS-based OTP sending and verification
+ * - Automatic device token registration after authentication
+ * - Persistent authentication state management
+ * - Comprehensive error handling and user feedback
+ * - Session management and sign-out functionality
+ * 
+ * @param sendOtpSmsUseCase Use case for sending OTP via SMS
+ * @param verifyOtpSmsUseCase Use case for verifying OTP codes
+ * @param updateDeviceTokenUseCase Use case for updating device tokens
+ * @param otpAuthManager Authentication manager for session handling
+ * 
+ * @author ChitChat Development Team
+ * @since 1.0
  */
 @HiltViewModel
 class OtpAuthViewModel @Inject constructor(
@@ -34,22 +57,32 @@ class OtpAuthViewModel @Inject constructor(
         private const val TAG = "OtpAuthViewModel"
     }
     
+    // Main authentication state containing token, loading status, and errors
     private val _authState = MutableStateFlow(AuthState())
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
     
+    // Flag indicating whether OTP has been successfully sent to user
     private val _otpSent = MutableStateFlow(false)
     val otpSent: StateFlow<Boolean> = _otpSent.asStateFlow()
     
+    // Complete authentication response from server after successful verification
     private val _authResponse = MutableStateFlow<OtpAuthResponse?>(null)
     val authResponse: StateFlow<OtpAuthResponse?> = _authResponse.asStateFlow()
 
     init {
+        // Initialize authentication state and observers
         checkAuthenticationStatus()
         observeAuthState()
     }
 
     /**
-     * Sends OTP to the specified phone number
+     * Sends OTP to the specified phone number via SMS.
+     * 
+     * This method initiates the OTP authentication process by sending a one-time
+     * password to the user's phone number. The phone number should be in international
+     * format (e.g., "+1234567890").
+     * 
+     * @param phoneNumber The phone number in international format to send OTP to
      */
     fun sendOtp(phoneNumber: String) {
         viewModelScope.launch {
@@ -75,7 +108,14 @@ class OtpAuthViewModel @Inject constructor(
     }
 
     /**
-     * Verifies OTP and authenticates the user
+     * Verifies the OTP code and authenticates the user.
+     * 
+     * This method validates the OTP code entered by the user and completes
+     * the authentication process. Upon successful verification, it stores
+     * the authentication token and updates the device token for push notifications.
+     * 
+     * @param phoneNumber The phone number used for OTP (should match the one used for sending)
+     * @param otp The OTP code entered by the user
      */
     fun verifyOtp(phoneNumber: String, otp: String) {
         viewModelScope.launch {
@@ -106,8 +146,13 @@ class OtpAuthViewModel @Inject constructor(
     }
 
     /**
-     * Updates device token after successful authentication
-     * This runs in background and doesn't affect user experience if it fails
+     * Updates the device token for push notifications after successful authentication.
+     * 
+     * This method runs in the background and registers the device token with the
+     * server to enable push notifications. It doesn't affect the user experience
+     * if it fails, as it's a background operation.
+     * 
+     * @param token The authentication token to use for the device token update request
      */
     private fun updateDeviceTokenAfterAuth(token: String) {
         viewModelScope.launch {

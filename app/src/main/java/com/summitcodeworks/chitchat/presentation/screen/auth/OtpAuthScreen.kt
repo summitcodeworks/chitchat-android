@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,13 +21,34 @@ import com.summitcodeworks.chitchat.presentation.components.CountryPickerBottomS
 import com.summitcodeworks.chitchat.presentation.viewmodel.OtpAuthViewModel
 
 /**
- * OTP Authentication Screen
+ * OTP Authentication Screen for ChitChat application.
  * 
- * Handles SMS-based OTP authentication flow:
- * 1. User enters phone number
- * 2. System sends OTP via SMS
- * 3. User enters OTP code
- * 4. System verifies OTP and authenticates user
+ * This screen provides the complete SMS-based OTP authentication flow for users.
+ * It handles the two-step authentication process: phone number entry and OTP verification.
+ * 
+ * Authentication Flow:
+ * 1. User selects country and enters phone number
+ * 2. System sends OTP via SMS to the provided number
+ * 3. User enters the received OTP code
+ * 4. System verifies OTP and authenticates the user
+ * 5. On successful authentication, user is navigated to the main app
+ * 
+ * Key features:
+ * - Country code selection with searchable picker
+ * - Phone number input with proper validation
+ * - OTP input with automatic SMS detection
+ * - Loading states and error handling
+ * - Resend OTP functionality with cooldown timer
+ * - Clean UI with proper keyboard types
+ * 
+ * The screen integrates with:
+ * - OtpAuthViewModel for business logic
+ * - Country picker component for international support
+ * - OTP authentication manager for session handling
+ * 
+ * @param onAuthSuccess Callback triggered when authentication succeeds
+ * @param modifier Modifier for styling the screen
+ * @param viewModel ViewModel handling OTP authentication logic
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -206,14 +228,25 @@ fun OtpAuthScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
                 )
             ) {
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(16.dp)
-                )
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Couldn't verify the code. Please try again.",
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
             }
         }
 

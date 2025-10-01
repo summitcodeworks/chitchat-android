@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -24,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.summitcodeworks.networkmonitor.model.NetworkLog
 import com.google.gson.Gson
 import com.google.gson.JsonParser
@@ -31,7 +34,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import com.summitcodeworks.networkmonitor.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun NetworkLogDetailsScreen(
     logId: Long,
@@ -41,10 +44,21 @@ fun NetworkLogDetailsScreen(
 ) {
     val log by viewModel.getLogById(logId).collectAsStateWithLifecycle(initialValue = null)
     val clipboardManager = LocalClipboardManager.current
+    val coroutineScope = rememberCoroutineScope()
 
-    var selectedTab by remember { mutableStateOf(0) }
+    val pagerState = rememberPagerState(pageCount = { 4 })
     var showCopyDialog by remember { mutableStateOf(false) }
     var copyContent by remember { mutableStateOf("") }
+    var refreshKey by remember { mutableStateOf(0) }
+    
+    // Auto-refresh effect to catch late-arriving response data (max 3 retries)
+    LaunchedEffect(log?.responseBody, log?.responseCode) {
+        if (log != null && log?.responseBody == null && log?.responseCode != null && refreshKey < 3) {
+            // If we have a response code but no body, wait a bit and refresh
+            kotlinx.coroutines.delay(300)
+            refreshKey++
+        }
+    }
 
     if (log == null) {
         Box(
@@ -154,63 +168,89 @@ fun NetworkLogDetailsScreen(
 
                 if (currentLog.error != null) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Error: ${currentLog.error}",
-                        fontSize = 12.sp,
-                        color = Color.Red,
-                        modifier = Modifier.background(
-                            Color.Red.copy(alpha = 0.1f),
-                            RoundedCornerShape(4.dp)
-                        ).padding(8.dp)
-                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Request couldn't be completed. Tap to retry or check your connection.",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
                 }
             }
         }
 
         // Tabs
-        TabRow(selectedTabIndex = selectedTab) {
+        TabRow(selectedTabIndex = pagerState.currentPage) {
             listOf("Request", "Response", "Headers", "cURL").forEachIndexed { index, title ->
                 Tab(
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
+                    selected = pagerState.currentPage == index,
+                    onClick = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
+                    },
                     text = { Text(title) }
                 )
             }
         }
 
-        // Tab Content
-        when (selectedTab) {
-            0 -> RequestContent(currentLog, clipboardManager) { content ->
-                copyContent = content
-                showCopyDialog = true
-            }
-            1 -> ResponseContent(currentLog, clipboardManager) { content ->
-                copyContent = content
-                showCopyDialog = true
-            }
-            2 -> HeadersContent(currentLog, clipboardManager) { content ->
-                copyContent = content
-                showCopyDialog = true
-            }
-            3 -> CurlContent(currentLog, clipboardManager) { content ->
-                copyContent = content
-                showCopyDialog = true
+        // Swipeable Tab Content with HorizontalPager
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            when (page) {
+                0 -> RequestContent(currentLog, clipboardManager) { content ->
+                    copyContent = content
+                    showCopyDialog = true
+                }
+                1 -> ResponseContent(currentLog, clipboardManager) { content ->
+                    copyContent = content
+                    showCopyDialog = true
+                }
+                2 -> HeadersContent(currentLog, clipboardManager) { content ->
+                    copyContent = content
+                    showCopyDialog = true
+                }
+                3 -> CurlContent(currentLog, clipboardManager) { content ->
+                    copyContent = content
+                    showCopyDialog = true
+                }
             }
         }
     }
 
     // Copy dialog
     if (showCopyDialog) {
+        // Copy to clipboard immediately when dialog shows
+        LaunchedEffect(copyContent) {
+            clipboardManager.setText(AnnotatedString(copyContent))
+        }
+        
         AlertDialog(
             onDismissRequest = { showCopyDialog = false },
-            title = { Text("Copy to Clipboard") },
+            title = { Text("Copied!") },
             text = { 
-                Text("Content copied to clipboard")
+                Text("Content has been copied to clipboard")
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        clipboardManager.setText(AnnotatedString(copyContent))
                         showCopyDialog = false
                     }
                 ) {
@@ -227,35 +267,40 @@ private fun RequestContent(
     clipboardManager: androidx.compose.ui.platform.ClipboardManager,
     onCopy: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Request Headers
         if (!log.requestHeaders.isNullOrEmpty()) {
-            ExpandableSection(
-                title = "Request Headers",
-                content = log.requestHeaders,
-                onCopy = onCopy
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            item {
+                ExpandableSection(
+                    title = "Request Headers",
+                    content = log.requestHeaders,
+                    onCopy = onCopy
+                )
+            }
         }
 
         // Request Body
         if (!log.requestBody.isNullOrEmpty()) {
-            ExpandableSection(
-                title = "Request Body",
-                content = formatJsonIfPossible(log.requestBody),
-                onCopy = onCopy,
-                isJson = isJsonContent(log.requestBody)
-            )
+            item {
+                ExpandableSection(
+                    title = "Request Body",
+                    content = formatJsonIfPossible(log.requestBody),
+                    onCopy = onCopy,
+                    isJson = isJsonContent(log.requestBody)
+                )
+            }
         } else {
-            Text(
-                text = "No request body",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            item {
+                Text(
+                    text = "No request body",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }
@@ -266,35 +311,40 @@ private fun ResponseContent(
     clipboardManager: androidx.compose.ui.platform.ClipboardManager,
     onCopy: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Response Headers
         if (!log.responseHeaders.isNullOrEmpty()) {
-            ExpandableSection(
-                title = "Response Headers",
-                content = log.responseHeaders,
-                onCopy = onCopy
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            item {
+                ExpandableSection(
+                    title = "Response Headers",
+                    content = log.responseHeaders,
+                    onCopy = onCopy
+                )
+            }
         }
 
         // Response Body
         if (!log.responseBody.isNullOrEmpty()) {
-            ExpandableSection(
-                title = "Response Body",
-                content = formatJsonIfPossible(log.responseBody),
-                onCopy = onCopy,
-                isJson = isJsonContent(log.responseBody)
-            )
+            item {
+                ExpandableSection(
+                    title = "Response Body",
+                    content = formatJsonIfPossible(log.responseBody),
+                    onCopy = onCopy,
+                    isJson = isJsonContent(log.responseBody)
+                )
+            }
         } else {
-            Text(
-                text = "No response body",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            item {
+                Text(
+                    text = "No response body",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }
@@ -338,24 +388,28 @@ private fun CurlContent(
     clipboardManager: androidx.compose.ui.platform.ClipboardManager,
     onCopy: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (!log.curlCommand.isNullOrEmpty()) {
-            ExpandableSection(
-                title = "cURL Command",
-                content = log.curlCommand,
-                onCopy = onCopy,
-                isMonospace = true
-            )
+            item {
+                ExpandableSection(
+                    title = "cURL Command",
+                    content = log.curlCommand,
+                    onCopy = onCopy,
+                    isMonospace = true
+                )
+            }
         } else {
-            Text(
-                text = "No cURL command available",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            item {
+                Text(
+                    text = "No cURL command available",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }
@@ -408,17 +462,25 @@ private fun ExpandableSection(
 
             if (isExpanded) {
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp), // Limit max height for scrollability
                     color = if (isJson) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
                     shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp)
                 ) {
-                    Text(
-                        text = content,
-                        modifier = Modifier.padding(16.dp),
-                        fontSize = if (isMonospace) 12.sp else 14.sp,
-                        fontFamily = if (isMonospace) FontFamily.Monospace else FontFamily.Default,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Text(
+                            text = content,
+                            modifier = Modifier.padding(16.dp),
+                            fontSize = if (isMonospace) 12.sp else 14.sp,
+                            fontFamily = if (isMonospace) FontFamily.Monospace else FontFamily.Default,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
@@ -429,7 +491,7 @@ private fun formatJsonIfPossible(content: String): String {
     return try {
         val jsonParser = JsonParser()
         val jsonElement = jsonParser.parse(content)
-        val gson = Gson()
+        val gson = com.google.gson.GsonBuilder().setPrettyPrinting().create()
         gson.toJson(jsonElement)
     } catch (e: Exception) {
         content

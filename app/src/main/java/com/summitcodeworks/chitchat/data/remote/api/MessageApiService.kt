@@ -15,16 +15,16 @@ interface MessageApiService {
     suspend fun getConversationMessages(
         @Path("userId") userId: Long,
         @Query("page") page: Int = 0,
-        @Query("size") size: Int = 20,
-        @Query("sort") sort: String = "timestamp,desc"
+        @Query("size") size: Int = 50,
+        @Query("sort") sort: String = "timestamp,asc"
     ): Response<ApiResponse<MessagePageResponse>>
     
     @GET("api/messages/group/{groupId}")
     suspend fun getGroupMessages(
         @Path("groupId") groupId: Long,
         @Query("page") page: Int = 0,
-        @Query("size") size: Int = 20,
-        @Query("sort") sort: String = "timestamp,desc"
+        @Query("size") size: Int = 50,
+        @Query("sort") sort: String = "timestamp,asc"
     ): Response<ApiResponse<MessagePageResponse>>
     
     @GET("api/messages/search")

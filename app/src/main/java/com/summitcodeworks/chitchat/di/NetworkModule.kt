@@ -14,6 +14,46 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * Hilt dependency injection module for network-related components in ChitChat.
+ * 
+ * This module provides all network-related dependencies including HTTP clients,
+ * API services, WebSocket clients, and network interceptors. It configures
+ * the complete networking stack for the application.
+ * 
+ * Components provided:
+ * - Gson serializer for JSON handling
+ * - HTTP interceptors for authentication and error handling
+ * - API service factory for creating service instances
+ * - WebSocket clients for real-time communication
+ * - Individual API service interfaces
+ * 
+ * Network stack configuration:
+ * - OTP authentication interceptor for automatic token injection
+ * - Error response interceptor for unified error handling
+ * - Network monitoring interceptor for debugging
+ * - Environment-aware service factory
+ * - WebSocket connection management
+ * 
+ * API services provided:
+ * - UserApiService: User profile and management operations
+ * - MessageApiService: Message sending and retrieval
+ * - CallApiService: Voice/video call functionality
+ * - StatusApiService: Status updates and stories
+ * - MediaApiService: File upload and media handling
+ * - NotificationApiService: Push notification management
+ * - GroupApiService: Group chat operations
+ * - AdminApiService: Administrative functions
+ * 
+ * All services are configured with proper interceptors for:
+ * - Authentication token injection
+ * - Request/response logging
+ * - Error handling and retry logic
+ * - Network monitoring and debugging
+ * 
+ * @author ChitChat Development Team
+ * @since 1.0
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {

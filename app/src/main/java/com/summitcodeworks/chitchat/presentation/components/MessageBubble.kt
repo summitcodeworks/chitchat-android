@@ -22,6 +22,40 @@ import com.summitcodeworks.chitchat.ui.theme.SentMessageBackground
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Message bubble component for displaying chat messages in ChitChat.
+ * 
+ * This composable renders individual chat messages with appropriate styling
+ * based on whether the message was sent by the current user or received from
+ * another user. It supports various message types and provides rich formatting
+ * for different content types.
+ * 
+ * Message types supported:
+ * - TEXT: Plain text messages with proper formatting
+ * - IMAGE: Image messages with thumbnails and metadata
+ * - VIDEO: Video messages with preview and duration
+ * - AUDIO: Audio messages with waveform visualization
+ * - DOCUMENT: File attachments with icons and metadata
+ * 
+ * Styling features:
+ * - Different colors for sent vs received messages
+ * - Rounded corners with appropriate corner radius
+ * - Message timestamps and read receipts
+ * - Reply message threading
+ * - Media content display
+ * - Message status indicators
+ * 
+ * The component automatically handles:
+ * - Message alignment (right for sent, left for received)
+ * - Content wrapping and text overflow
+ * - Timestamp formatting and display
+ * - Media type-specific rendering
+ * - Accessibility features
+ * 
+ * @param message The message object containing content and metadata
+ * @param isOwnMessage Whether this message was sent by the current user
+ * @param modifier Modifier for styling the message bubble
+ */
 @Composable
 fun MessageBubble(
     message: Message,

@@ -112,7 +112,7 @@ class ChitChatIntegrationService @Inject constructor(
                     senderId = messageDto.senderId,
                     receiverId = messageDto.receiverId,
                     groupId = messageDto.groupId,
-                    timestamp = messageDto.timestamp,
+                    timestamp = messageDto.timestamp ?: System.currentTimeMillis().toString(),
                     isRead = messageDto.isRead,
                     replyToMessageId = messageDto.replyToMessageId,
                     mediaId = messageDto.mediaId

@@ -131,80 +131,122 @@ fun RequestEditorScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(vertical = 16.dp)
         ) {
-            // Method and URL
+            // Method selector with horizontal pills
             item {
-                Card(
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                var expanded by remember { mutableStateOf(false) }
+                val methods = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")
+                
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+                    Text(
+                        text = "Method",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = "Request Details",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            // Method dropdown
-                            var expanded by remember { mutableStateOf(false) }
-                            val methods = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")
-                            
-                            Box(modifier = Modifier.weight(0.3f)) {
-                                ExposedDropdownMenuBox(
-                                    expanded = expanded,
-                                    onExpandedChange = { expanded = !expanded }
-                                ) {
-                                    OutlinedTextField(
-                                        value = method,
-                                        onValueChange = { method = it },
-                                        readOnly = true,
-                                        label = { Text("Method") },
-                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                                        modifier = Modifier.menuAnchor()
+                        methods.take(4).forEach { methodOption ->
+                            FilterChip(
+                                selected = method == methodOption,
+                                onClick = { method = methodOption },
+                                label = { 
+                                    Text(
+                                        text = methodOption,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (method == methodOption) FontWeight.SemiBold else FontWeight.Medium
                                     )
-                                    ExposedDropdownMenu(
-                                        expanded = expanded,
-                                        onDismissRequest = { expanded = false }
-                                    ) {
-                                        methods.forEach { methodOption ->
-                                            DropdownMenuItem(
-                                                text = { Text(methodOption) },
-                                                onClick = {
-                                                    method = methodOption
-                                                    expanded = false
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // URL field
-                            OutlinedTextField(
-                                value = url,
-                                onValueChange = { url = it },
-                                label = { Text("URL") },
-                                modifier = Modifier.weight(0.7f),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = when(methodOption) {
+                                        "GET" -> Color(0xFF4CAF50)
+                                        "POST" -> Color(0xFF2196F3)
+                                        "PUT" -> Color(0xFFFF9800)
+                                        "DELETE" -> Color(0xFFF44336)
+                                        else -> MaterialTheme.colorScheme.primary
+                                    },
+                                    selectedLabelColor = Color.White
+                                ),
+                                modifier = Modifier.height(36.dp)
                             )
                         }
+                        
+                        // More options
+                        Box {
+                            FilterChip(
+                                selected = method in methods.drop(4),
+                                onClick = { expanded = true },
+                                label = { 
+                                    Text(
+                                        text = if (method in methods.drop(4)) method else "•••",
+                                        fontSize = 13.sp
+                                    )
+                                },
+                                modifier = Modifier.height(36.dp)
+                            )
+                            
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                methods.drop(4).forEach { methodOption ->
+                                    DropdownMenuItem(
+                                        text = { Text(methodOption) },
+                                        onClick = {
+                                            method = methodOption
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
+                }
+            }
+            
+            // URL field
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "URL",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                    
+                    OutlinedTextField(
+                        value = url,
+                        onValueChange = { url = it },
+                        placeholder = { Text("https://api.example.com/endpoint") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
+                    )
                 }
             }
 
             // Headers
             item {
-                Card(
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -215,38 +257,92 @@ fun RequestEditorScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Headers (${headers.size})",
+                                text = "Headers",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                             )
-                            TextButton(onClick = { showHeadersDialog = true }) {
-                                Text("Edit Headers")
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (headers.isNotEmpty()) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "${headers.size}",
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                                IconButton(onClick = { showHeadersDialog = true }) {
+                                    Icon(
+                                        imageVector = if (headers.isEmpty()) Icons.Default.Add else Icons.Default.Edit,
+                                        contentDescription = "Edit Headers",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         }
                         
                         if (headers.isEmpty()) {
-                            Text(
-                                text = "No headers",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        } else {
-                            headers.forEach { (key, value) ->
-                                HeaderItem(
-                                    key = key,
-                                    value = value,
-                                    onEdit = { newKey, newValue ->
-                                        val newHeaders = headers.toMutableMap()
-                                        newHeaders.remove(key)
-                                        newHeaders[newKey] = newValue
-                                        headers = newHeaders
-                                    },
-                                    onDelete = {
-                                        val newHeaders = headers.toMutableMap()
-                                        newHeaders.remove(key)
-                                        headers = newHeaders
-                                    }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp)
                                 )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "No headers added",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                headers.forEach { (key, value) ->
+                                    Surface(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = key,
+                                                    fontWeight = FontWeight.Medium,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text(
+                                                    text = value,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -256,8 +352,9 @@ fun RequestEditorScreen(
             // Body (for POST, PUT, PATCH)
             if (method in listOf("POST", "PUT", "PATCH")) {
                 item {
-                    Card(
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp)
@@ -265,34 +362,67 @@ fun RequestEditorScreen(
                             Text(
                                 text = "Request Body",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             
                             // Content Type
-                            OutlinedTextField(
-                                value = contentType,
-                                onValueChange = { contentType = it },
-                                label = { Text("Content-Type") },
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                            )
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Content-Type",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 4.dp)
+                                )
+                                OutlinedTextField(
+                                    value = contentType,
+                                    onValueChange = { contentType = it },
+                                    placeholder = { Text("application/json") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                                    )
+                                )
+                            }
                             
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                             
                             // Body content
-                            OutlinedTextField(
-                                value = body,
-                                onValueChange = { body = it },
-                                label = { Text("Body") },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp),
-                                maxLines = 10,
-                                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                    fontFamily = FontFamily.Monospace
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Body Content",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 4.dp)
                                 )
-                            )
+                                OutlinedTextField(
+                                    value = body,
+                                    onValueChange = { body = it },
+                                    placeholder = { Text("{\n  \"key\": \"value\"\n}") },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp),
+                                    maxLines = 10,
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 13.sp
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                                    )
+                                )
+                            }
                         }
                     }
                 }

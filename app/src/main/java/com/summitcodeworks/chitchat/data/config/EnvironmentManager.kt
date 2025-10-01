@@ -30,8 +30,8 @@ class EnvironmentManager @Inject constructor(
     }
 
     private fun getSavedEnvironment(): Environment {
-        val savedName = sharedPrefs.getString(KEY_ENVIRONMENT, Environment.LOCAL.displayName)
-        return Environment.fromDisplayName(savedName ?: Environment.LOCAL.displayName)
+        val savedName = sharedPrefs.getString(KEY_ENVIRONMENT, Environment.PRODUCTION.displayName)
+        return Environment.fromDisplayName(savedName ?: Environment.PRODUCTION.displayName)
     }
 
     fun setEnvironment(environment: Environment) {

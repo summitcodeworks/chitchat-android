@@ -4,19 +4,53 @@ import androidx.room.*
 import com.summitcodeworks.chitchat.data.local.entity.MessageEntity
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Data Access Object (DAO) for message-related database operations in ChitChat.
+ * 
+ * This interface defines all database operations for managing chat messages
+ * in the local Room database. It provides methods for CRUD operations,
+ * querying conversations, searching messages, and managing message status.
+ * 
+ * Key functionalities:
+ * - Message storage and retrieval
+ * - Conversation message queries
+ * - Message search and filtering
+ * - Read receipt and delivery status management
+ * - Unread message counting
+ * - Message deletion and cleanup
+ * 
+ * Database operations supported:
+ * - Insert/Update/Delete individual messages
+ * - Bulk operations for message synchronization
+ * - Complex queries for conversation history
+ * - Search functionality across message content
+ * - Status updates for read/delivered states
+ * 
+ * Performance optimizations:
+ * - Indexed queries for fast conversation loading
+ * - Pagination support for large message histories
+ * - Efficient unread count calculations
+ * - Optimized search queries with LIKE operations
+ * 
+ * The DAO supports both direct messages and group messages through
+ * conditional queries based on receiverId and groupId parameters.
+ * 
+ * @author ChitChat Development Team
+ * @since 1.0
+ */
 @Dao
 interface MessageDao {
     
     @Query("SELECT * FROM messages WHERE id = :messageId")
     suspend fun getMessageById(messageId: String): MessageEntity?
     
-    @Query("SELECT * FROM messages WHERE senderId = :senderId AND receiverId = :receiverId ORDER BY timestamp DESC")
+    @Query("SELECT * FROM messages WHERE senderId = :senderId AND receiverId = :receiverId ORDER BY timestamp ASC")
     fun getConversationMessages(senderId: Long, receiverId: Long): Flow<List<MessageEntity>>
     
-    @Query("SELECT * FROM messages WHERE groupId = :groupId ORDER BY timestamp DESC")
+    @Query("SELECT * FROM messages WHERE groupId = :groupId ORDER BY timestamp ASC")
     fun getGroupMessages(groupId: Long): Flow<List<MessageEntity>>
     
-    @Query("SELECT * FROM messages WHERE (senderId = :userId OR receiverId = :userId) AND groupId IS NULL ORDER BY timestamp DESC")
+    @Query("SELECT * FROM messages WHERE (senderId = :userId OR receiverId = :userId) AND groupId IS NULL ORDER BY timestamp ASC")
     fun getAllUserMessages(userId: Long): Flow<List<MessageEntity>>
     
     @Query("SELECT * FROM messages WHERE content LIKE '%' || :query || '%' ORDER BY timestamp DESC")

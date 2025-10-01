@@ -30,8 +30,37 @@ import com.summitcodeworks.chitchat.presentation.screen.calls.CallContactsScreen
 import com.summitcodeworks.chitchat.presentation.screen.demo.ComponentDemoScreen
 import com.summitcodeworks.chitchat.presentation.screen.debug.DebugScreen
 import com.summitcodeworks.chitchat.presentation.screen.settings.SettingsScreen
+import com.summitcodeworks.chitchat.presentation.screen.search.SearchScreen
 import com.summitcodeworks.chitchat.presentation.viewmodel.ConversationsViewModel
 
+/**
+ * Main navigation composable for the ChitChat application.
+ * 
+ * This composable sets up the complete navigation structure for the app using
+ * Jetpack Navigation Compose. It defines all available routes and handles
+ * navigation between different screens with smooth animations.
+ * 
+ * The navigation structure includes:
+ * - Splash screen for app initialization
+ * - OTP authentication flow for user login
+ * - Profile setup for new users
+ * - Main app screens (Home, Chat, Status, Calls, Settings)
+ * - Feature screens (Search, Contacts, Debug)
+ * 
+ * Navigation features:
+ * - Smooth slide animations between screens
+ * - Proper back stack management
+ * - Deep linking support through route definitions
+ * - Shared ViewModels for state management
+ * - Proper screen lifecycle handling
+ * 
+ * The app follows a hierarchical navigation pattern:
+ * 1. Splash -> Authentication -> Profile Setup -> Main App
+ * 2. Main App -> Feature Screens (Chat, Status, etc.)
+ * 
+ * @param modifier Modifier for styling the navigation container
+ * @param navController Navigation controller for managing screen transitions
+ */
 @Composable
 fun ChitChatNavigation(
     modifier: Modifier = Modifier,
@@ -135,9 +164,25 @@ fun ChitChatNavigation(
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
                 },
+                onNavigateToSearch = {
+                    navController.navigate(Screen.Search.route)
+                },
                 onNavigateToAuth = {
                     navController.navigate(Screen.OtpAuth.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+        
+        composable(Screen.Search.route) {
+            SearchScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToChat = { userId ->
+                    navController.navigate(Screen.Chat.createRoute(userId)) {
+                        popUpTo(Screen.Search.route) { inclusive = true }
                     }
                 }
             )

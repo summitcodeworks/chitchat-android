@@ -18,6 +18,45 @@ import com.summitcodeworks.chitchat.R
 import com.summitcodeworks.chitchat.presentation.viewmodel.SplashViewModel
 import kotlinx.coroutines.delay
 
+/**
+ * Splash screen for the ChitChat application.
+ * 
+ * This screen serves as the entry point of the application and handles
+ * the initial authentication and profile setup flow. It displays the
+ * app logo and performs necessary initialization checks before navigating
+ * to the appropriate screen.
+ * 
+ * Splash screen flow:
+ * 1. Display app logo and branding
+ * 2. Check user authentication status
+ * 3. Verify profile completeness if authenticated
+ * 4. Update device token for push notifications
+ * 5. Navigate to appropriate screen based on user state
+ * 
+ * Navigation logic:
+ * - If not authenticated: Navigate to OTP authentication
+ * - If authenticated but profile incomplete: Navigate to profile setup
+ * - If authenticated and profile complete: Navigate to home screen
+ * 
+ * Key features:
+ * - Smooth branding experience with logo display
+ * - Authentication state validation
+ * - Profile completeness checking
+ * - Device token registration for notifications
+ * - Automatic navigation based on user state
+ * - Loading state management during checks
+ * 
+ * The splash screen ensures:
+ * - Proper app initialization
+ * - User authentication verification
+ * - Profile setup completion
+ * - Device token registration
+ * - Smooth transition to main app
+ * 
+ * @param onNavigateToAuth Callback to navigate to authentication screen
+ * @param onNavigateToHome Callback to navigate to home screen
+ * @param onNavigateToProfileSetup Callback to navigate to profile setup
+ */
 @Composable
 fun SplashScreen(
     onNavigateToAuth: () -> Unit,

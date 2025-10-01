@@ -36,6 +36,7 @@ fun HomeScreen(
     onNavigateToCallContacts: () -> Unit = {},
     onNavigateToDebug: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToSearch: () -> Unit = {},
     onNavigateToAuth: () -> Unit = {},
     homeScreenAuthViewModel: HomeScreenAuthViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
@@ -44,15 +45,28 @@ fun HomeScreen(
 ) {
     val isAuthenticated by homeScreenAuthViewModel.otpAuthManager.isAuthenticated.collectAsState()
     val currentUser by homeScreenAuthViewModel.otpAuthManager.currentUser.collectAsState()
+    val currentToken by homeScreenAuthViewModel.otpAuthManager.currentToken.collectAsState()
     val user by homeViewModel.user.collectAsStateWithLifecycle()
     val isLoading by homeViewModel.isLoading.collectAsStateWithLifecycle()
     val error by homeViewModel.error.collectAsStateWithLifecycle()
     val currentEnvironment by environmentViewModel.currentEnvironment.collectAsStateWithLifecycle()
+    
+    // WebSocket manager
+    val webSocketManager = hiltViewModel<com.summitcodeworks.chitchat.presentation.viewmodel.WebSocketViewModel>()
 
     // Authentication guard - redirect to auth if not properly authenticated
     LaunchedEffect(isAuthenticated) {
         if (!isAuthenticated) {
             onNavigateToAuth()
+        }
+    }
+    
+    // Connect WebSocket when authenticated
+    LaunchedEffect(isAuthenticated, currentToken) {
+        if (isAuthenticated) {
+            currentToken?.let { token ->
+                webSocketManager.connectWebSocket(token)
+            }
         }
     }
 
@@ -77,10 +91,12 @@ fun HomeScreen(
                     actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 actions = {
-                    IconButton(onClick = {
-                        // TODO: Navigate to search screen
-                        // Could navigate to a search screen for users, groups, messages
-                    }) {
+                    IconButton(
+                        onClick = { 
+                            android.util.Log.d("HomeScreen", "Search button clicked")
+                            onNavigateToSearch()
+                        }
+                    ) {
                         Icon(Icons.Default.Search, contentDescription = "Search")
                     }
                     Box {
@@ -175,7 +191,7 @@ fun HomeScreen(
             ScrollableTabRow(
                 selectedTabIndex = selectedTabIndex,
                 modifier = Modifier.fillMaxWidth(),
-                edgePadding = 16.dp,
+                edgePadding = 8.dp,
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary,
                 divider = {
@@ -208,7 +224,7 @@ fun HomeScreen(
                         )
                     },
                     modifier = Modifier
-                        .padding(horizontal = 1.dp, vertical = 2.dp)
+                        .padding(horizontal = 1.dp, vertical = 4.dp)
                         .background(
                             color = if (selectedTabIndex == 0)
                                 MaterialTheme.colorScheme.primary
@@ -216,7 +232,7 @@ fun HomeScreen(
                                 MaterialTheme.colorScheme.surfaceVariant,
                             shape = RoundedCornerShape(50.dp)
                         )
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
                 Tab(
                     selected = selectedTabIndex == 1,
@@ -233,7 +249,7 @@ fun HomeScreen(
                         )
                     },
                     modifier = Modifier
-                        .padding(horizontal = 1.dp, vertical = 2.dp)
+                        .padding(horizontal = 1.dp, vertical = 4.dp)
                         .background(
                             color = if (selectedTabIndex == 1)
                                 MaterialTheme.colorScheme.primary
@@ -241,7 +257,7 @@ fun HomeScreen(
                                 MaterialTheme.colorScheme.surfaceVariant,
                             shape = RoundedCornerShape(50.dp)
                         )
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
                 Tab(
                     selected = selectedTabIndex == 2,
@@ -258,7 +274,7 @@ fun HomeScreen(
                         )
                     },
                     modifier = Modifier
-                        .padding(horizontal = 1.dp, vertical = 2.dp)
+                        .padding(horizontal = 1.dp, vertical = 4.dp)
                         .background(
                             color = if (selectedTabIndex == 2)
                                 MaterialTheme.colorScheme.primary
@@ -266,7 +282,7 @@ fun HomeScreen(
                                 MaterialTheme.colorScheme.surfaceVariant,
                             shape = RoundedCornerShape(50.dp)
                         )
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
 

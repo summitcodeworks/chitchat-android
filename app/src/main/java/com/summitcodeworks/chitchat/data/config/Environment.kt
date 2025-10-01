@@ -9,17 +9,17 @@ enum class Environment(
         displayName = "Local",
         apiBaseUrl = "http://192.168.0.152:9101/",
         webSocketBaseUrl = "ws://192.168.0.152:9101/"
-    );
-//,
-//    PRODUCTION(
-//        displayName = "Production",
-//        apiBaseUrl = "http://65.1.185.194:9101/",
-//        webSocketBaseUrl = "ws://65.1.185.194:9101/"
-//    );
+    )
+,
+   PRODUCTION(
+       displayName = "Production",
+       apiBaseUrl = "http://65.1.185.194:9101/",
+       webSocketBaseUrl = "ws://65.1.185.194:9101/"
+   );
 
     companion object {
         fun fromDisplayName(displayName: String): Environment {
-            return values().find { it.displayName == displayName } ?: LOCAL
+            return values().find { it.displayName == displayName } ?: PRODUCTION
         }
     }
 }

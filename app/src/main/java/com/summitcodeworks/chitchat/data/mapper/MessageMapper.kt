@@ -2,6 +2,7 @@ package com.summitcodeworks.chitchat.data.mapper
 
 import com.summitcodeworks.chitchat.data.local.entity.MessageEntity
 import com.summitcodeworks.chitchat.data.remote.dto.MessageDto
+import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -16,7 +17,7 @@ class MessageMapper @Inject constructor() {
             groupId = dto.groupId,
             content = dto.content,
             messageType = dto.messageType,
-            timestamp = dto.timestamp,
+            timestamp = dto.timestamp ?: Instant.now().toString(),
             isRead = dto.isRead,
             isDelivered = dto.isDelivered,
             replyToMessageId = dto.replyToMessageId,

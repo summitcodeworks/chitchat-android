@@ -2,6 +2,7 @@ package com.summitcodeworks.chitchat.domain.usecase.message
 
 import com.summitcodeworks.chitchat.data.repository.MessageRepository
 import com.summitcodeworks.chitchat.domain.model.Message
+import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -28,7 +29,7 @@ class GetGroupMessagesUseCase @Inject constructor(
                             groupId = messageDto.groupId,
                             content = messageDto.content,
                             messageType = com.summitcodeworks.chitchat.domain.model.MessageType.valueOf(messageDto.messageType),
-                            timestamp = messageDto.timestamp,
+                            timestamp = messageDto.timestamp ?: Instant.now().toString(),
                             isRead = messageDto.isRead,
                             isDelivered = messageDto.isDelivered,
                             replyToMessageId = messageDto.replyToMessageId,

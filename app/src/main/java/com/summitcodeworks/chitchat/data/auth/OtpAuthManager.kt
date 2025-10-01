@@ -11,11 +11,37 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * OTP Authentication Manager
+ * OTP (One-Time Password) Authentication Manager for ChitChat.
  * 
- * Handles SMS-based OTP authentication as the primary authentication method
- * for the ChitChat application. This replaces Firebase authentication
- * with a simpler, more direct approach.
+ * This class manages SMS-based OTP authentication as the primary authentication
+ * method for the ChitChat application. It replaces traditional Firebase authentication
+ * with a simpler, more direct approach that provides better user experience and
+ * reduced complexity.
+ * 
+ * Key responsibilities:
+ * - Manage authentication tokens and user sessions
+ * - Persist authentication state across app restarts
+ * - Handle token expiration and refresh logic
+ * - Provide authentication status to the entire app
+ * - Manage user profile data during authentication
+ * 
+ * Authentication flow:
+ * 1. User enters phone number
+ * 2. SMS OTP is sent to the phone number
+ * 3. User enters OTP code
+ * 4. Server validates OTP and returns access token
+ * 5. Token is stored locally for subsequent API calls
+ * 
+ * Security features:
+ * - Secure token storage in SharedPreferences
+ * - Token expiration handling
+ * - Automatic session cleanup on sign-out
+ * - User data encryption and protection
+ * 
+ * @param context Application context for SharedPreferences access
+ * 
+ * @author ChitChat Development Team
+ * @since 1.0
  */
 @Singleton
 class OtpAuthManager @Inject constructor(

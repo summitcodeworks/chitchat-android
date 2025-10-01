@@ -68,7 +68,7 @@ fun ConversationListItem(
                 
                 conversation.lastMessageTime?.let { time ->
                     Text(
-                        text = time,
+                        text = formatTime(time),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
@@ -109,6 +109,41 @@ fun ConversationListItem(
                     }
                 }
             }
+        }
+    }
+}
+
+private fun formatTime(timestamp: String): String {
+    return try {
+        val messageTime = java.time.Instant.parse(timestamp).toEpochMilli()
+        val now = System.currentTimeMillis()
+        val diff = now - messageTime
+        
+        when {
+            diff < 60000 -> "Just now" // Less than 1 minute
+            diff < 3600000 -> "${diff / 60000}m" // Less than 1 hour
+            diff < 86400000 -> { // Less than 24 hours
+                val formatter = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault())
+                formatter.format(java.util.Date(messageTime))
+            }
+            diff < 172800000 -> "Yesterday" // Less than 2 days
+            diff < 604800000 -> { // Less than 7 days
+                val formatter = java.text.SimpleDateFormat("EEEE", java.util.Locale.getDefault())
+                formatter.format(java.util.Date(messageTime))
+            }
+            else -> { // Older than 7 days
+                val formatter = java.text.SimpleDateFormat("MM/dd/yy", java.util.Locale.getDefault())
+                formatter.format(java.util.Date(messageTime))
+            }
+        }
+    } catch (e: Exception) {
+        // Fallback for parsing errors
+        try {
+            val date = java.util.Date(timestamp.toLongOrNull() ?: 0L)
+            val formatter = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault())
+            formatter.format(date)
+        } catch (e: Exception) {
+            ""
         }
     }
 }

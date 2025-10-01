@@ -30,8 +30,30 @@ fun TypingIndicator(
 ) {
     AnimatedVisibility(
         visible = isVisible,
-        enter = slideInVertically() + fadeIn(),
-        exit = slideOutVertically() + fadeOut(),
+        enter = slideInVertically(
+            initialOffsetY = { it / 2 },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        ) + fadeIn(
+            animationSpec = tween(300, easing = FastOutSlowInEasing)
+        ) + scaleIn(
+            initialScale = 0.8f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        ),
+        exit = slideOutVertically(
+            targetOffsetY = { it / 2 },
+            animationSpec = tween(200, easing = FastOutLinearInEasing)
+        ) + fadeOut(
+            animationSpec = tween(200)
+        ) + scaleOut(
+            targetScale = 0.8f,
+            animationSpec = tween(200)
+        ),
         modifier = modifier
     ) {
         Row(
@@ -51,19 +73,19 @@ fun TypingIndicator(
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    TypingDots()
+                    
                     Text(
                         text = "$userName is typing",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    TypingDots()
                 }
             }
         }
@@ -74,57 +96,95 @@ fun TypingIndicator(
 private fun TypingDots() {
     val infiniteTransition = rememberInfiniteTransition(label = "typing")
     
-    val dot1Alpha = infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
+    // Dot 1 animations
+    val dot1Scale = infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.2f,
         animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = EaseInOut),
+            animation = tween(600, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "dot1"
+        label = "dot1_scale"
     )
     
-    val dot2Alpha = infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
+    val dot1OffsetY = infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -4f,
         animationSpec = infiniteRepeatable(
-            animation = tween(600, delayMillis = 200, easing = EaseInOut),
+            animation = tween(600, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "dot2"
+        label = "dot1_offset"
     )
     
-    val dot3Alpha = infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
+    // Dot 2 animations (delayed)
+    val dot2Scale = infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.2f,
         animationSpec = infiniteRepeatable(
-            animation = tween(600, delayMillis = 400, easing = EaseInOut),
+            animation = tween(600, delayMillis = 200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "dot3"
+        label = "dot2_scale"
+    )
+    
+    val dot2OffsetY = infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, delayMillis = 200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dot2_offset"
+    )
+    
+    // Dot 3 animations (more delayed)
+    val dot3Scale = infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, delayMillis = 400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dot3_scale"
+    )
+    
+    val dot3OffsetY = infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, delayMillis = 400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dot3_offset"
     )
     
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        TypingDot(alpha = dot1Alpha.value)
-        TypingDot(alpha = dot2Alpha.value)
-        TypingDot(alpha = dot3Alpha.value)
+        TypingDot(scale = dot1Scale.value, offsetY = dot1OffsetY.value)
+        TypingDot(scale = dot2Scale.value, offsetY = dot2OffsetY.value)
+        TypingDot(scale = dot3Scale.value, offsetY = dot3OffsetY.value)
     }
 }
 
 @Composable
 private fun TypingDot(
-    alpha: Float,
+    scale: Float,
+    offsetY: Float,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
             .size(8.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                translationY = offsetY
+            }
             .clip(CircleShape)
             .background(MaterialTheme.colorScheme.onSurfaceVariant)
-            .graphicsLayer { this.alpha = alpha }
     )
 }
 

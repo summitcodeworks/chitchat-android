@@ -30,7 +30,8 @@ class OtpAuthRepository @Inject constructor(
      */
     suspend fun sendOtp(phoneNumber: String): Result<Unit> {
         return try {
-            val request = SendOtpRequest(phoneNumber = phoneNumber)
+            val cleanedPhone = cleanPhoneNumber(phoneNumber)
+            val request = SendOtpRequest(phoneNumber = cleanedPhone)
             val response = userApiService.sendOtp(request)
             
             if (response.isSuccessful && response.body()?.success == true) {
@@ -49,7 +50,8 @@ class OtpAuthRepository @Inject constructor(
      */
     suspend fun verifyOtp(phoneNumber: String, otp: String): Result<OtpAuthResponse> {
         return try {
-            val request = VerifyOtpSmsRequest(phoneNumber = phoneNumber, otp = otp)
+            val cleanedPhone = cleanPhoneNumber(phoneNumber)
+            val request = VerifyOtpSmsRequest(phoneNumber = cleanedPhone, otp = otp)
             val response = userApiService.verifyOtp(request)
             
             if (response.isSuccessful && response.body()?.success == true) {
@@ -140,7 +142,12 @@ class OtpAuthRepository @Inject constructor(
      */
     suspend fun syncContacts(contacts: List<ContactDto>): Result<List<UserDto>> {
         return try {
-            val request = ContactSyncRequest(contacts = contacts)
+            // Clean phone numbers in contacts before sending to API
+            val cleanedContacts = contacts.map { contact ->
+                contact.copy(phoneNumber = cleanPhoneNumber(contact.phoneNumber))
+            }
+            
+            val request = ContactSyncRequest(contacts = cleanedContacts)
             val response = userApiService.syncContacts(request)
             
             if (response.isSuccessful && response.body()?.success == true) {
@@ -279,7 +286,10 @@ class OtpAuthRepository @Inject constructor(
      */
     suspend fun checkMultiplePhoneNumbers(phoneNumbers: List<String>): Result<CheckPhonesResponse> {
         return try {
-            val request = CheckPhonesRequest(phoneNumbers = phoneNumbers)
+            // Clean and format all phone numbers before sending to API
+            val cleanedPhoneNumbers = phoneNumbers.map { cleanPhoneNumber(it) }
+            
+            val request = CheckPhonesRequest(phoneNumbers = cleanedPhoneNumbers)
             val response = userApiService.checkMultiplePhoneNumbers(request)
 
             if (response.isSuccessful && response.body()?.success == true) {
@@ -291,6 +301,55 @@ class OtpAuthRepository @Inject constructor(
                 }
             } else {
                 val errorMessage = response.body()?.message ?: "Failed to check phone numbers"
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Cleans and formats a phone number to international format
+     * - Removes all formatting characters (spaces, dashes, parentheses, dots, etc.)
+     * - Ensures it starts with + sign
+     * - Returns clean format: +[country code][number]
+     */
+    private fun cleanPhoneNumber(phone: String): String {
+        // Remove all formatting characters except + and digits
+        var cleaned = phone.replace(Regex("[^+\\d]"), "")
+        
+        // Ensure only one + at the beginning
+        if (cleaned.startsWith("+")) {
+            // Remove any additional + signs after the first one
+            cleaned = "+" + cleaned.substring(1).replace("+", "")
+        } else if (cleaned.isNotEmpty() && cleaned[0].isDigit()) {
+            // If no + sign but starts with digit, add + at the beginning
+            cleaned = "+$cleaned"
+        }
+        
+        return cleaned
+    }
+
+    /**
+     * Gets user details by user ID from API and caches in local DB
+     */
+    suspend fun getUserById(userId: Long): Result<UserDto> {
+        return try {
+            val response = userApiService.getUserById(userId)
+
+            if (response.isSuccessful && response.body()?.success == true) {
+                val userDto = response.body()?.data
+                if (userDto != null) {
+                    // Save to local database
+                    val userEntity = userMapper.dtoToEntity(userDto)
+                    userDao.insertUser(userEntity)
+
+                    Result.success(userDto)
+                } else {
+                    Result.failure(Exception("Invalid response data"))
+                }
+            } else {
+                val errorMessage = response.body()?.message ?: "Failed to get user details"
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
