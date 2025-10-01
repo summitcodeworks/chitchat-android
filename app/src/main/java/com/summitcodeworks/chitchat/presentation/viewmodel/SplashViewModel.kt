@@ -5,7 +5,11 @@ import androidx.lifecycle.viewModelScope
 import android.util.Log
 import com.summitcodeworks.chitchat.data.auth.OtpAuthManager
 import com.summitcodeworks.chitchat.domain.usecase.notification.UpdateDeviceTokenUseCase
+import com.summitcodeworks.chitchat.domain.usecase.user.GetUserProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -15,11 +19,36 @@ import javax.inject.Inject
 @HiltViewModel
 class SplashViewModel @Inject constructor(
     val otpAuthManager: OtpAuthManager,
-    private val updateDeviceTokenUseCase: UpdateDeviceTokenUseCase
+    private val updateDeviceTokenUseCase: UpdateDeviceTokenUseCase,
+    private val getUserProfileUseCase: GetUserProfileUseCase
 ) : ViewModel() {
 
     companion object {
         private const val TAG = "SplashViewModel"
+    }
+
+    private val _hasCompleteProfile = MutableStateFlow<Boolean?>(null)
+    val hasCompleteProfile: StateFlow<Boolean?> = _hasCompleteProfile.asStateFlow()
+
+    /**
+     * Checks if user has a complete profile
+     */
+    fun checkProfileCompleteness() {
+        viewModelScope.launch {
+            try {
+                getUserProfileUseCase()
+                    .fold(
+                        onSuccess = { user ->
+                            _hasCompleteProfile.value = user.name.isNotBlank()
+                        },
+                        onFailure = {
+                            _hasCompleteProfile.value = false
+                        }
+                    )
+            } catch (e: Exception) {
+                _hasCompleteProfile.value = false
+            }
+        }
     }
 
     /**

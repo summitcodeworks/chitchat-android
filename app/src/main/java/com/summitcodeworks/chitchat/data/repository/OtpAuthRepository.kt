@@ -273,4 +273,28 @@ class OtpAuthRepository @Inject constructor(
      * Observes authentication state
      */
     fun observeAuthState(): Flow<Boolean> = otpAuthManager.isAuthenticated
+
+    /**
+     * Checks multiple phone numbers to see if they are registered
+     */
+    suspend fun checkMultiplePhoneNumbers(phoneNumbers: List<String>): Result<CheckPhonesResponse> {
+        return try {
+            val request = CheckPhonesRequest(phoneNumbers = phoneNumbers)
+            val response = userApiService.checkMultiplePhoneNumbers(request)
+
+            if (response.isSuccessful && response.body()?.success == true) {
+                val checkPhonesResponse = response.body()?.data
+                if (checkPhonesResponse != null) {
+                    Result.success(checkPhonesResponse)
+                } else {
+                    Result.failure(Exception("Invalid response data"))
+                }
+            } else {
+                val errorMessage = response.body()?.message ?: "Failed to check phone numbers"
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

@@ -16,6 +16,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.summitcodeworks.chitchat.domain.model.Message
 import com.summitcodeworks.chitchat.domain.model.MessageType
@@ -41,6 +43,7 @@ fun ChatScreen(
     val chatState by chatViewModel.chatState.collectAsState()
     val listState = rememberLazyListState()
     val currentToken by otpAuthManager.currentToken.collectAsState()
+    val currentUser by otpAuthManager.currentUser.collectAsState()
     
     LaunchedEffect(chatState.messages) {
         if (chatState.messages.isNotEmpty()) {
@@ -85,156 +88,168 @@ fun ChatScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Messages List
-            LazyColumn(
-                state = listState,
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 16.dp)
+                    .fillMaxSize()
+                    .imePadding()
             ) {
-                items(chatState.messages) { message ->
-                    MessageBubble(
-                        message = message,
-                        isOwnMessage = message.senderId == 1L // Mock current user ID
-                    )
-                }
-                
-                // Typing indicator
-                item {
-                    TypingIndicator(
-                        isVisible = isTyping,
-                        userName = "User $userId"
-                    )
-                }
-            }
-            
-            // Message Input
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.Bottom
-            ) {
-                // Attachment button
-                IconButton(
-                    onClick = { showMediaPicker = true },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        Icons.Default.AttachFile,
-                        contentDescription = "Attach",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                
-                OutlinedTextField(
-                    value = messageText,
-                    onValueChange = { 
-                        messageText = it
-                        // Simulate typing indicator
-                        if (it.isNotBlank() && !isTyping) {
-                            isTyping = true
-                        } else if (it.isBlank() && isTyping) {
-                            isTyping = false
-                        }
-                    },
-                    placeholder = { Text("Type a message...") },
+                // Messages List
+                LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 8.dp),
-                    maxLines = 4,
-                    shape = RoundedCornerShape(24.dp)
-                )
-                
-                FloatingActionButton(
-                    onClick = {
-                        if (messageText.isNotBlank() && currentToken != null) {
-                            chatViewModel.sendMessage(
-                                token = currentToken!!,
-                                receiverId = userId,
-                                content = messageText,
-                                messageType = MessageType.TEXT
-                            )
-                            messageText = ""
-                            isTyping = false
-                        }
-                    },
-                    modifier = Modifier.size(48.dp),
-                    containerColor = MaterialTheme.colorScheme.primary
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Send,
-                        contentDescription = "Send",
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
+                    items(chatState.messages) { message ->
+                        MessageBubble(
+                            message = message,
+                            isOwnMessage = currentUser?.id == message.senderId
+                        )
+                    }
+
+                    // Typing indicator
+                    item {
+                        TypingIndicator(
+                            isVisible = isTyping,
+                            userName = "User $userId"
+                        )
+                    }
                 }
-            }
-            
-            // Loading indicator
-            if (chatState.isLoading) {
-                Box(
+
+                // Message Input
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    // Attachment button
+                    IconButton(
+                        onClick = { showMediaPicker = true },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.AttachFile,
+                            contentDescription = "Attach",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = messageText,
+                        onValueChange = {
+                            messageText = it
+                            // Simulate typing indicator
+                            if (it.isNotBlank() && !isTyping) {
+                                isTyping = true
+                            } else if (it.isBlank() && isTyping) {
+                                isTyping = false
+                            }
+                        },
+                        placeholder = { Text("Type a message...") },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp),
+                        maxLines = 4,
+                        shape = RoundedCornerShape(24.dp)
+                    )
+
+                    FloatingActionButton(
+                        onClick = {
+                            if (messageText.isNotBlank() && currentToken != null) {
+                                chatViewModel.sendMessage(
+                                    token = currentToken!!,
+                                    receiverId = userId,
+                                    content = messageText,
+                                    messageType = MessageType.TEXT
+                                )
+                                messageText = ""
+                                isTyping = false
+                            }
+                        },
+                        modifier = Modifier.size(48.dp),
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        Icon(
+                            Icons.Default.Send,
+                            contentDescription = "Send",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
+            }
+
+            // Loading indicator overlay
+            if (chatState.isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.3f)),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
                 }
             }
-            
-            // Error message
+
+            // Error message overlay
             chatState.error?.let { error ->
-                Card(
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
+                        .fillMaxSize()
+                        .padding(16.dp)
+                        .imePadding(),
+                    contentAlignment = Alignment.BottomCenter
                 ) {
-                    Text(
-                        text = error,
-                        modifier = Modifier.padding(16.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Text(
+                            text = error,
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
                 }
             }
         }
-    }
-    
-    // Media picker bottom sheet
-    if (showMediaPicker) {
-        MediaPickerBottomSheet(
-            onDismiss = { showMediaPicker = false },
-            onImageSelected = {
-                showMediaPicker = false
-                // TODO: Upload image and send message
-                // chatViewModel.sendMessage("token", userId, null, "", MessageType.IMAGE, null, mediaId)
-            },
-            onVideoSelected = {
-                showMediaPicker = false
-                // TODO: Upload video and send message
-                // chatViewModel.sendMessage("token", userId, null, "", MessageType.VIDEO, null, mediaId)
-            },
-            onDocumentSelected = {
-                showMediaPicker = false
-                // TODO: Upload document and send message
-                // chatViewModel.sendMessage("token", userId, null, "", MessageType.DOCUMENT, null, mediaId)
-            },
-            onCameraSelected = { 
-                showMediaPicker = false
-                // TODO: Open camera to capture image/video
-                // Could use CameraX or system camera intent
-            }
-        )
+
+        // Media picker bottom sheet
+        if (showMediaPicker) {
+            MediaPickerBottomSheet(
+                onDismiss = { showMediaPicker = false },
+                onImageSelected = {
+                    showMediaPicker = false
+                    // TODO: Upload image and send message
+                    // chatViewModel.sendMessage("token", userId, null, "", MessageType.IMAGE, null, mediaId)
+                },
+                onVideoSelected = {
+                    showMediaPicker = false
+                    // TODO: Upload video and send message
+                    // chatViewModel.sendMessage("token", userId, null, "", MessageType.VIDEO, null, mediaId)
+                },
+                onDocumentSelected = {
+                    showMediaPicker = false
+                    // TODO: Upload document and send message
+                    // chatViewModel.sendMessage("token", userId, null, "", MessageType.DOCUMENT, null, mediaId)
+                },
+                onCameraSelected = {
+                    showMediaPicker = false
+                    // TODO: Open camera to capture image/video
+                    // Could use CameraX or system camera intent
+                }
+            )
+        }
     }
 }
 

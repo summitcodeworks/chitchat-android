@@ -75,4 +75,9 @@ interface UserApiService {
     suspend fun updateDeviceToken(
         @Body request: DeviceTokenUpdateRequest
     ): Response<ApiResponse<UserDto>>
+
+    @POST("api/users/check-phones")
+    suspend fun checkMultiplePhoneNumbers(
+        @Body request: CheckPhonesRequest
+    ): Response<ApiResponse<CheckPhonesResponse>>
 }

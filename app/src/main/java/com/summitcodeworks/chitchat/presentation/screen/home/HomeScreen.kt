@@ -21,8 +21,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.summitcodeworks.chitchat.presentation.viewmodel.HomeViewModel
 import com.summitcodeworks.chitchat.presentation.viewmodel.HomeScreenAuthViewModel
 import com.summitcodeworks.chitchat.presentation.viewmodel.EnvironmentViewModel
+import com.summitcodeworks.chitchat.presentation.viewmodel.ConversationsViewModel
 import com.summitcodeworks.chitchat.data.config.Environment
 import com.summitcodeworks.chitchat.presentation.components.NewChatBottomSheet
+import com.summitcodeworks.chitchat.presentation.components.ConversationListItem
 import com.summitcodeworks.chitchat.domain.model.Contact
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,7 +39,8 @@ fun HomeScreen(
     onNavigateToAuth: () -> Unit = {},
     homeScreenAuthViewModel: HomeScreenAuthViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
-    environmentViewModel: EnvironmentViewModel = hiltViewModel()
+    environmentViewModel: EnvironmentViewModel = hiltViewModel(),
+    conversationsViewModel: ConversationsViewModel = hiltViewModel()
 ) {
     val isAuthenticated by homeScreenAuthViewModel.otpAuthManager.isAuthenticated.collectAsState()
     val currentUser by homeScreenAuthViewModel.otpAuthManager.currentUser.collectAsState()
@@ -269,7 +272,10 @@ fun HomeScreen(
 
             // Tab Content
             when (selectedTabIndex) {
-                0 -> ChatsTab(onNavigateToChat = onNavigateToChat)
+                0 -> ChatsTab(
+                    onNavigateToChat = onNavigateToChat,
+                    conversationsViewModel = conversationsViewModel
+                )
                 1 -> StatusTab()
                 2 -> CallsTab()
             }
@@ -308,7 +314,16 @@ fun HomeScreen(
                 // TODO: Navigate to settings screen
             },
             onContactSelected = { contact ->
+                // Add conversation to the list if not exists
+                val userName = contact.registeredUser?.name ?: contact.name
+                val userAvatar = contact.registeredUser?.avatarUrl
+                conversationsViewModel.addConversationIfNotExists(
+                    userId = contact.id,
+                    userName = userName,
+                    userAvatar = userAvatar
+                )
                 // Navigate to chat with selected contact
+                showNewChatBottomSheet = false
                 onNavigateToChat(contact.id)
             }
         )
@@ -316,12 +331,37 @@ fun HomeScreen(
 }
 
 @Composable
-fun ChatsTab(onNavigateToChat: (Long) -> Unit) {
-    EmptyStateContent(
-        icon = Icons.Default.Chat,
-        title = "No chats yet",
-        description = "Start a new conversation to see your chats here"
-    )
+fun ChatsTab(
+    onNavigateToChat: (Long) -> Unit,
+    conversationsViewModel: ConversationsViewModel = hiltViewModel()
+) {
+    val conversations by conversationsViewModel.conversations.collectAsState()
+    
+    if (conversations.isEmpty()) {
+        EmptyStateContent(
+            icon = Icons.Default.Chat,
+            title = "No chats yet",
+            description = "Start a new conversation to see your chats here"
+        )
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            items(conversations) { conversation ->
+                ConversationListItem(
+                    conversation = conversation,
+                    onClick = {
+                        onNavigateToChat(conversation.userId)
+                    }
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 84.dp),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                )
+            }
+        }
+    }
 }
 
 @Composable

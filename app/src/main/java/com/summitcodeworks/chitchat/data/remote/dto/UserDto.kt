@@ -46,3 +46,22 @@ data class BlockUserRequest(
 data class UpdateStatusRequest(
     val isOnline: Boolean
 )
+
+data class CheckPhonesRequest(
+    val phoneNumbers: List<String>
+)
+
+data class PhoneCheckResult(
+    val phoneNumber: String,
+    val exists: Boolean,
+    val user: UserDto?,
+    val message: String
+)
+
+data class CheckPhonesResponse(
+    val results: List<PhoneCheckResult>,
+    val totalChecked: Int,
+    val foundCount: Int,
+    val notFoundCount: Int,
+    val message: String
+)

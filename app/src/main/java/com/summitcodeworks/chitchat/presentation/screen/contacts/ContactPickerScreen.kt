@@ -2,6 +2,8 @@ package com.summitcodeworks.chitchat.presentation.screen.contacts
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.provider.ContactsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,18 +25,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.summitcodeworks.chitchat.domain.model.Contact
 import com.summitcodeworks.chitchat.presentation.viewmodel.ContactsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactPickerScreen(
     onNavigateBack: () -> Unit,
-    onContactSelected: (Long) -> Unit,
+    onContactSelected: (Contact) -> Unit,
     viewModel: ContactsViewModel = hiltViewModel()
 ) {
     val contacts by viewModel.contacts.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val hasPermission by viewModel.hasPermission.collectAsState()
+    var permissionRequested by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -43,6 +47,15 @@ fun ContactPickerScreen(
             viewModel.onPermissionGranted()
         }
     }
+
+    // Auto-request permission when screen opens if not granted
+    LaunchedEffect(hasPermission) {
+        if (!hasPermission && !permissionRequested) {
+            permissionRequested = true
+            permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -138,11 +151,16 @@ fun ContactPickerScreen(
 
                     // Real contacts
                     items(contacts) { contact ->
-                        ContactItem(
-                            name = contact.name,
-                            phone = contact.phone,
-                            onClick = { onContactSelected(contact.id) }
-                        )
+                        if (contact.isRegistered && contact.registeredUser != null) {
+                            RegisteredContactItem(
+                                contact = contact,
+                                onClick = { onContactSelected(contact) }
+                            )
+                        } else {
+                            ContactItemWithInvite(
+                                contact = contact
+                            )
+                        }
                     }
                 }
 
@@ -234,6 +252,142 @@ private fun ContactItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun RegisteredContactItem(
+    contact: Contact,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Avatar
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = contact.name.firstOrNull()?.toString()?.uppercase() ?: "?",
+                color = MaterialTheme.colorScheme.onPrimary,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // Contact info
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            // Local contact name from phone
+            Text(
+                text = contact.name,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp
+            )
+            
+            // Registered user name (like WhatsApp shows "~Name")
+            contact.registeredUser?.name?.let { registeredName ->
+                if (registeredName != contact.name) {
+                    Text(
+                        text = "~$registeredName",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
+            }
+            
+            // Phone number
+            Text(
+                text = contact.phone,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ContactItemWithInvite(
+    contact: Contact,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Avatar
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = contact.name.firstOrNull()?.toString()?.uppercase() ?: "?",
+                color = MaterialTheme.colorScheme.onPrimary,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // Contact info
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = contact.name,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp
+            )
+            Text(
+                text = contact.phone,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Invite button
+        OutlinedButton(
+            onClick = {
+                val message = "Hey! Join me on ChitChat, a great messaging app. Download it now!"
+                val smsIntent = Intent(Intent.ACTION_VIEW).apply {
+                    data = Uri.parse("sms:${contact.phone}")
+                    putExtra("sms_body", message)
+                }
+                try {
+                    context.startActivity(smsIntent)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            },
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Send,
+                contentDescription = "Invite",
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Invite", fontSize = 14.sp)
         }
     }
 }

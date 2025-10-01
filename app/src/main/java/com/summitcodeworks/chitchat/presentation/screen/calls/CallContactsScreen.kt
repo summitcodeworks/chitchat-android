@@ -34,6 +34,7 @@ fun CallContactsScreen(
     val contacts by viewModel.contacts.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val hasPermission by viewModel.hasPermission.collectAsState()
+    var permissionRequested by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -42,6 +43,15 @@ fun CallContactsScreen(
             viewModel.onPermissionGranted()
         }
     }
+
+    // Auto-request permission when screen opens if not granted
+    LaunchedEffect(hasPermission) {
+        if (!hasPermission && !permissionRequested) {
+            permissionRequested = true
+            permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(

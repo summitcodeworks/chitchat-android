@@ -21,23 +21,38 @@ import kotlinx.coroutines.delay
 @Composable
 fun SplashScreen(
     onNavigateToAuth: () -> Unit,
-    onNavigateToHome: () -> Unit
+    onNavigateToHome: () -> Unit,
+    onNavigateToProfileSetup: () -> Unit
 ) {
     val splashViewModel = hiltViewModel<SplashViewModel>()
     val otpAuthManager = splashViewModel.otpAuthManager
     val isAuthenticated by otpAuthManager.isAuthenticated.collectAsState()
     val currentToken by otpAuthManager.currentToken.collectAsState()
+    val hasCompleteProfile by splashViewModel.hasCompleteProfile.collectAsState()
 
     LaunchedEffect(Unit) {
         delay(2000) // Show splash for 2 seconds
 
         // Check if user is properly authenticated with OTP
         if (isAuthenticated && currentToken != null) {
-            // Update device token on app launch for authenticated users
-            splashViewModel.updateDeviceTokenIfAuthenticated()
-            onNavigateToHome()
+            // Check if user has a complete profile
+            splashViewModel.checkProfileCompleteness()
         } else {
             onNavigateToAuth()
+        }
+    }
+
+    // Navigate based on profile completeness
+    LaunchedEffect(hasCompleteProfile) {
+        if (hasCompleteProfile != null) {
+            if (hasCompleteProfile == true) {
+                // Update device token and go to home
+                splashViewModel.updateDeviceTokenIfAuthenticated()
+                onNavigateToHome()
+            } else {
+                // Profile incomplete, go to profile setup
+                onNavigateToProfileSetup()
+            }
         }
     }
     

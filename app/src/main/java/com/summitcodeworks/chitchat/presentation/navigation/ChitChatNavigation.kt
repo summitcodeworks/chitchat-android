@@ -1,5 +1,9 @@
 package com.summitcodeworks.chitchat.presentation.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +30,7 @@ import com.summitcodeworks.chitchat.presentation.screen.calls.CallContactsScreen
 import com.summitcodeworks.chitchat.presentation.screen.demo.ComponentDemoScreen
 import com.summitcodeworks.chitchat.presentation.screen.debug.DebugScreen
 import com.summitcodeworks.chitchat.presentation.screen.settings.SettingsScreen
+import com.summitcodeworks.chitchat.presentation.viewmodel.ConversationsViewModel
 
 @Composable
 fun ChitChatNavigation(
@@ -38,9 +43,37 @@ fun ChitChatNavigation(
         NavHost(
             navController = navController,
             startDestination = Screen.Splash.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }
         ) {
-        composable(Screen.Splash.route) {
+        composable(
+            route = Screen.Splash.route,
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) }
+        ) {
             SplashScreen(
                 onNavigateToAuth = {
                     navController.navigate(Screen.OtpAuth.route) {
@@ -49,6 +82,11 @@ fun ChitChatNavigation(
                 },
                 onNavigateToHome = {
                     navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                },
+                onNavigateToProfileSetup = {
+                    navController.navigate(Screen.ProfileSetup.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 }
@@ -60,7 +98,7 @@ fun ChitChatNavigation(
         composable(Screen.OtpAuth.route) {
             OtpAuthScreen(
                 onAuthSuccess = {
-                    navController.navigate(Screen.Home.route) {
+                    navController.navigate(Screen.ProfileSetup.route) {
                         popUpTo(Screen.OtpAuth.route) { inclusive = true }
                     }
                 }
@@ -141,11 +179,22 @@ fun ChitChatNavigation(
         }
 
         composable(Screen.ContactPicker.route) {
+            val conversationsViewModel: ConversationsViewModel = hiltViewModel()
             ContactPickerScreen(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onContactSelected = { userId ->
+                onContactSelected = { contact ->
+                    // Add conversation to the list
+                    val userName = contact.registeredUser?.name ?: contact.name
+                    val userAvatar = contact.registeredUser?.avatarUrl
+                    val userId = contact.registeredUser?.id ?: contact.id
+                    conversationsViewModel.addConversationIfNotExists(
+                        userId = userId,
+                        userName = userName,
+                        userAvatar = userAvatar
+                    )
+                    // Navigate to chat
                     navController.navigate(Screen.Chat.createRoute(userId)) {
                         popUpTo(Screen.Home.route)
                     }

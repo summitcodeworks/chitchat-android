@@ -33,18 +33,21 @@ class ProfileSetupViewModel @Inject constructor(
             getUserProfileUseCase()
                 .fold(
                     onSuccess = { user ->
-                        val isProfileComplete = user.name.isNotBlank()
+                        // Load profile data but don't auto-navigate
+                        // User needs to explicitly save to navigate to home
                         _profileState.value = _profileState.value.copy(
                             isLoading = false,
                             existingProfile = user,
-                            isProfileComplete = isProfileComplete,
+                            isProfileComplete = false,
                             error = null
                         )
                     },
                     onFailure = { exception ->
+                        // Don't show error for new users without profile
+                        // Just set loading to false and let them create profile
                         _profileState.value = _profileState.value.copy(
                             isLoading = false,
-                            error = exception.message
+                            error = null
                         )
                     }
                 )

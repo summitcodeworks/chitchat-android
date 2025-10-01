@@ -84,9 +84,9 @@ class ChitChatIntegrationService @Inject constructor(
     ): Result<Unit> {
         return withRetry(errorHandler) {
             val request = SendMessageRequest(
-                receiverId = receiverId,
+                recipientId = receiverId,
                 content = content,
-                messageType = messageType
+                type = messageType
             )
             val result = messageRepository.sendMessage(token, request)
             result.getOrThrow()

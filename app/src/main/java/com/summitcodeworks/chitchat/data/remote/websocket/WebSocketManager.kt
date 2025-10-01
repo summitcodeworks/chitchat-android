@@ -70,10 +70,10 @@ class WebSocketManager @Inject constructor(
         mediaId: Long? = null
     ) {
         val messageData = SendMessageData(
-            receiverId = receiverId,
+            recipientId = receiverId,
             groupId = groupId,
             content = content,
-            messageType = messageType,
+            type = messageType,
             replyToMessageId = replyToMessageId,
             mediaId = mediaId
         )

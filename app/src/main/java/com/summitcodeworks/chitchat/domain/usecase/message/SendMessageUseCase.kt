@@ -20,10 +20,10 @@ class SendMessageUseCase @Inject constructor(
     ): Result<Message> {
         return try {
             val request = com.summitcodeworks.chitchat.data.remote.dto.SendMessageRequest(
-                receiverId = receiverId,
+                recipientId = receiverId,
                 groupId = groupId,
                 content = content,
-                messageType = messageType.name,
+                type = messageType.name,
                 replyToMessageId = replyToMessageId,
                 mediaId = mediaId
             )

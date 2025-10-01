@@ -1,11 +1,15 @@
 package com.summitcodeworks.chitchat.data.remote.dto
 
+import com.google.gson.annotations.SerializedName
+
 data class MessageDto(
     val id: String,
     val senderId: Long,
+    @SerializedName("recipientId")
     val receiverId: Long? = null,
     val groupId: Long? = null,
     val content: String,
+    @SerializedName("type")
     val messageType: String, // TEXT, IMAGE, VIDEO, AUDIO, DOCUMENT
     val timestamp: String,
     val isRead: Boolean = false,
@@ -19,10 +23,10 @@ data class MessageDto(
 )
 
 data class SendMessageRequest(
-    val receiverId: Long? = null,
+    val recipientId: Long? = null,
     val groupId: Long? = null,
     val content: String,
-    val messageType: String = "TEXT",
+    val type: String = "TEXT",
     val replyToMessageId: String? = null,
     val mediaId: Long? = null
 )

@@ -11,10 +11,10 @@ data class AuthMessage(
 )
 
 data class SendMessageData(
-    val receiverId: Long? = null,
+    val recipientId: Long? = null,
     val groupId: Long? = null,
     val content: String,
-    val messageType: String = "TEXT",
+    val type: String = "TEXT",
     val replyToMessageId: String? = null,
     val mediaId: Long? = null
 )
